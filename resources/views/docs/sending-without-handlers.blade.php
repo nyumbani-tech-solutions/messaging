@@ -11,7 +11,7 @@
     <x-essentials::docs.section id="send" title="Build and send">
         <x-essentials::docs.code title="Anywhere in the app">
             use Nyumbani\Messaging\Message;
-            use Nyumbani\Messaging\MessageProcessed;
+            use Nyumbani\Messaging\Events\MessageProcessed;
 
             $sms = Message::make()
                 ->recipient($user)

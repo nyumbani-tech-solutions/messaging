@@ -35,7 +35,7 @@
         <x-essentials::docs.code title="Anywhere in the app">
             use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
             use Nyumbani\Messaging\Message;
-            use Nyumbani\Messaging\MessageProcessed;
+            use Nyumbani\Messaging\Events\MessageProcessed;
 
             $sms = Message::make()
                 ->recipient($user)

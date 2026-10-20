@@ -4,23 +4,14 @@ namespace Nyumbani\Messaging;
 
 use Illuminate\Database\Eloquent\Model;
 use Nyumbani\Messaging\Contracts\MessageScope;
+use Nyumbani\Messaging\Enums\MessageChannel;
 
 class Messenger
 {
     /**
-     * The header the scope gave, worked out once
+     * The scope's header and footer, worked out once, and null until then
      */
-    protected ?string $header = null;
-
-    /**
-     * The footer the scope gave, worked out once
-     */
-    protected ?string $footer = null;
-
-    /**
-     * Whether the header and footer were worked out yet
-     */
-    protected bool $isFramed = false;
+    protected ?array $frame = null;
 
     /**
      * Create the messenger for a scope that controls its channels, or for the global switches alone
@@ -58,14 +49,18 @@ class Messenger
      */
     public function recipient(Model $recipient): Message
     {
-        //  Work out the header and footer, once for all the recipients
-        $this->frame();
+        //  Work out the header and footer once, for all the recipients
+        [$header, $footer] = $this->frame ??= [
+            $this->scope?->messageHeader(),
+            $this->scope?->messageFooter(),
+        ];
 
+        //  Return the message
         return Message::make()
             ->recipient($recipient)
             ->scope($this->scope)
-            ->header($this->header)
-            ->footer($this->footer);
+            ->header($header)
+            ->footer($footer);
     }
 
     /**
@@ -104,25 +99,5 @@ class Messenger
         return collect(MessageChannel::cases())->contains(
             fn (MessageChannel $channel) => $this->isEnabled($channel)
         );
-    }
-
-    /**
-     * Ask the scope for its header and footer the first time, which may be costly
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    protected function frame(): void
-    {
-        //  Do it only once
-        if ($this->isFramed) {
-            return;
-        }
-
-        //  Ask the scope, which may answer null for none
-        $this->header = $this->scope?->messageHeader();
-        $this->footer = $this->scope?->messageFooter();
-
-        //  Remember that it was done
-        $this->isFramed = true;
     }
 }

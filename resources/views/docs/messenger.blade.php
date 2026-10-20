@@ -20,7 +20,7 @@
         <x-essentials::docs.code title="app/Models/Project.php">
             use Illuminate\Database\Eloquent\Model;
             use Nyumbani\Messaging\Contracts\MessageScope;
-            use Nyumbani\Messaging\MessageChannel;
+            use Nyumbani\Messaging\Enums\MessageChannel;
 
             class Project extends Model implements MessageScope
             {
@@ -52,7 +52,7 @@
     <x-essentials::docs.section id="flow" title="2. Stop early, then message each recipient">
         <x-essentials::docs.code title="app/Services/AdminNotificationService.php">
             use App\Services\Messaging\Handlers\BudgetReachedMessageHandler;
-            use Nyumbani\Messaging\MessageProcessed;
+            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Messenger;
 
             $messenger = Messenger::for($this->project);

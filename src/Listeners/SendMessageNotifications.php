@@ -1,12 +1,15 @@
 <?php
 
-namespace Nyumbani\Messaging;
+namespace Nyumbani\Messaging\Listeners;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Nyumbani\Messaging\Contracts\MessageScope;
+use Nyumbani\Messaging\Enums\MessageChannel;
+use Nyumbani\Messaging\Events\MessageProcessed;
 use Nyumbani\Messaging\Gateways\SmsGateway;
+use Nyumbani\Messaging\Messenger;
 
 class SendMessageNotifications
 {

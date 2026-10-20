@@ -21,7 +21,7 @@ Messages are queued, so run a queue worker (`php artisan queue:work` or Horizon)
 ```php
 use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
 use Nyumbani\Messaging\Message;
-use Nyumbani\Messaging\MessageProcessed;
+use Nyumbani\Messaging\Events\MessageProcessed;
 
 $sms = Message::make()
     ->recipient($user)

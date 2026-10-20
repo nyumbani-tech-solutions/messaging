@@ -60,7 +60,7 @@
             use App\Models\Tenant;
             use App\Services\Messaging\Handlers\InvoiceIssuedMessageHandler;
             use Illuminate\Http\RedirectResponse;
-            use Nyumbani\Messaging\MessageProcessed;
+            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Messenger;
 
             class InvoiceController

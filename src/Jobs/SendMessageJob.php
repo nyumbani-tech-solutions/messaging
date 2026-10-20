@@ -1,6 +1,6 @@
 <?php
 
-namespace Nyumbani\Messaging;
+namespace Nyumbani\Messaging\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;

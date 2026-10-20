@@ -1,6 +1,6 @@
 <?php
 
-namespace Nyumbani\Messaging;
+namespace Nyumbani\Messaging\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 

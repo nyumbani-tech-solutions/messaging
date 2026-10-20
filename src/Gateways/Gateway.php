@@ -3,7 +3,7 @@
 namespace Nyumbani\Messaging\Gateways;
 
 use Illuminate\Support\Collection;
-use Nyumbani\Messaging\SendMessageJob;
+use Nyumbani\Messaging\Jobs\SendMessageJob;
 
 abstract class Gateway
 {

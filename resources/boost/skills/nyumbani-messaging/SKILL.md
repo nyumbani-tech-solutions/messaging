@@ -27,7 +27,7 @@ A message type is a class that extends `MessageHandler` and implements `handle()
 ```php
 use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
 use Nyumbani\Messaging\Message;
-use Nyumbani\Messaging\MessageProcessed;
+use Nyumbani\Messaging\Events\MessageProcessed;
 
 $sms = Message::make()->recipient($user)->salutation()->handler(new CheckInOtpMessageHandler($code))->toSMS('ACME');
 

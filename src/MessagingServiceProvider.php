@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Nyumbani\Essentials\Docs\Docs;
 use Nyumbani\Essentials\Docs\DocsRegistry;
+use Nyumbani\Messaging\Events\MessageProcessed;
+use Nyumbani\Messaging\Listeners\SendMessageNotifications;
 
 class MessagingServiceProvider extends ServiceProvider
 {

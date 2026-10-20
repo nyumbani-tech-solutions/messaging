@@ -2,7 +2,7 @@
 
 namespace Nyumbani\Messaging\Contracts;
 
-use Nyumbani\Messaging\MessageChannel;
+use Nyumbani\Messaging\Enums\MessageChannel;
 
 interface MessageScope
 {
