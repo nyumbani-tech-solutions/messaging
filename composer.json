@@ -1,0 +1,40 @@
+{
+	"name": "nyumbani/messaging",
+	"type": "library",
+	"description": "Queue SMS from any Nyumbani app through Nyumbani Connect: a message builder, handlers, rate-limited and retried delivery.",
+	"homepage": "https://nyumbanitech.co.ke/",
+	"keywords": [
+		"laravel",
+		"nyumbani",
+		"sms",
+		"messaging"
+	],
+	"license": "proprietary",
+	"authors": [
+		{
+			"name": "Alvin Kaburu",
+			"email": "geekaburu@nyumbanitech.co.ke"
+		}
+	],
+	"require": {
+		"php": "^8.3",
+		"laravel/framework": "^12.0||^13.0"
+	},
+	"suggest": {
+		"nyumbani/essentials": "Serves the Messaging docs at /nyumbani-messaging/docs in the local environment."
+	},
+	"autoload": {
+		"psr-4": {
+			"Nyumbani\\Messaging\\": "src/"
+		}
+	},
+	"extra": {
+		"laravel": {
+			"providers": [
+				"Nyumbani\\Messaging\\MessagingServiceProvider"
+			]
+		}
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true
+}

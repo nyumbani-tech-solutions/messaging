@@ -1,0 +1,251 @@
+<?php
+
+namespace Nyumbani\Messaging;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Message
+{
+    /**
+     * The header line shown above the salutation
+     */
+    protected ?string $header = null;
+
+    /**
+     * The salutation that opens the body
+     */
+    protected ?string $salutation = null;
+
+    /**
+     * The message body
+     */
+    protected ?string $body = null;
+
+    /**
+     * The footer line shown below the body
+     */
+    protected ?string $footer = null;
+
+    /**
+     * The model the message belongs to, such as an organization
+     */
+    protected ?Model $scope = null;
+
+    /**
+     * The meta data sent along with the message
+     */
+    protected array $metaData = [];
+
+    /**
+     * Return a new message
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public static function make(): static
+    {
+        return new static;
+    }
+
+    /**
+     * Set the header
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function header(?string $header): static
+    {
+        //  Set the header
+        $this->header = $header;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Address the message to a name
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function salutation(?string $name): static
+    {
+        //  Set the salutation
+        $this->salutation = $name ? "Dear {$name}, " : null;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the footer
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function footer(?string $footer): static
+    {
+        //  Set the footer
+        $this->footer = $footer;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the model the message belongs to
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function scope(?Model $scope): static
+    {
+        //  Set the scope
+        $this->scope = $scope;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Add meta data to send along with the message
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function metaData(array $metaData): static
+    {
+        //  Merge the meta data
+        $this->metaData = [...$this->metaData, ...$metaData];
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Append some text to the body, collapsing repeated spaces but keeping new lines
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function text(string $text = ''): static
+    {
+        //  Remove extra white spaces but ignore new lines and carriage returns
+        $text = preg_replace('/[^\S\r\n]+/', ' ', $text);
+
+        //  Append the text
+        $this->body .= $text;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Append new lines to the body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function newLine(int $count = 1): static
+    {
+        //  Append the new lines
+        $this->body .= str_repeat("\n", $count);
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Append an action label and its link to the body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function action(string $link, string $action): static
+    {
+        //  Append the action
+        $this->body .= "{$action} {$link}";
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Put some text at the start of the body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function prepend(string $text): static
+    {
+        //  Prepend the text
+        $this->body = "{$text}{$this->body}";
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Put some text at the end of the body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function append(string $text): static
+    {
+        //  Append the text
+        $this->body .= $text;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Build part of the message only when a condition holds
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function when(bool $condition, callable $then, ?callable $else = null): static
+    {
+        //  Run the matching callback
+        $condition ? $then($this) : ($else ? $else($this) : null);
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Build the body with a handler
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function handler(MessageHandler $handler, string $method = 'handle'): static
+    {
+        return $handler->build($this, $method);
+    }
+
+    /**
+     * Get the message body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function getBody(): ?string
+    {
+        return $this->body;
+    }
+
+    /**
+     * Get the SMS payload item for a recipient, who must have a phone_number
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function toSMS(Model $recipient, ?string $senderId = null): array
+    {
+        //  Separate the header
+        $header = $this->header ? "{$this->header}\n\n" : '';
+
+        //  Separate the footer
+        $footer = $this->footer ? "\n\n{$this->footer}" : '';
+
+        //  Return the payload item
+        return [
+            'scope_type' => $this->scope?->getMorphClass(),
+            'scope_id' => $this->scope?->getKey(),
+            'client_id' => $recipient->getKey(),
+            'client_type' => $recipient->getMorphClass(),
+            'sender_id' => $senderId,
+            'number' => $recipient->phone_number,
+            'text' => "{$header}{$this->salutation}{$this->body}{$footer}",
+            'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
+        ];
+    }
+}
