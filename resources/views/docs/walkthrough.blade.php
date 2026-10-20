@@ -9,7 +9,7 @@
             composer require nyumbani/messaging
             php artisan queue:work
         </x-essentials::docs.code>
-        <p>Set <code>NYUMBANI_CONNECT_BASE_URL</code> and <code>NYUMBANI_CONNECT_TOKEN</code> in <code>.env</code> as described under <a href="{{ $docs->url('installation') }}" class="text-primary underline">Installation</a>. The queue worker must stay running, because nothing is sent until it picks the job up.</p>
+        <p>Set <code>NYUMBANI_CONNECT_BASE_URL</code> and <code>NYUMBANI_CONNECT_TOKEN</code> in <code>.env</code> as described under <a href="{{ $docs->url('installation') }}" class="text-primary underline">Installation</a>. With <code>QUEUE_CONNECTION=sync</code> messages go out during the request and nothing else is needed. On any other connection, keep a queue worker running, because nothing is sent until it picks the job up.</p>
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="recipient" title="2. Give the recipient a phone number">
@@ -91,7 +91,7 @@
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="item" title="5. What toSMS() returns">
-        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> <code>Thank you</code> from <code>messageFooter()</code> and the sender <code>ACME</code> from <code>messageSenderId()</code>.</p>
+        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>; <code>property</code> and <code>tenant</code> are the names in your app's morph map, which is why <code>scope_type</code> and <code>client_type</code> are not class names. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> <code>Thank you</code> from <code>messageFooter()</code> and the sender <code>ACME</code> from <code>messageSenderId()</code>.</p>
         <x-essentials::docs.code lang="json" title="First payload item">
             {
                 "scope_type": "property",
@@ -111,7 +111,7 @@
     <x-essentials::docs.section id="connect" title="6. What Connect receives">
         <p>The listener hands the two items to the SMS gateway. Both use the sender <code>ACME</code>, so they travel together: one queued job, one request, with the numbers turned into <code>254</code> plus the last nine digits.</p>
         <x-essentials::docs.code lang="text" title="The request">
-            POST https://connect.nyumbani.ke/api/sms/send
+            POST {NYUMBANI_CONNECT_BASE_URL}/api/sms/send
             Authorization: Bearer {token}
         </x-essentials::docs.code>
         <x-essentials::docs.code lang="json" title="The body, always a list of messages">
@@ -167,6 +167,6 @@
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="deliver" title="8. Delivery">
-        <p>The worker posts the request. Connect answers <code>202</code> with <code>Messages queued successfully</code> and takes over from there. Any other answer throws, so the job is retried up to 25 times, after 60, 90 and then 120 seconds, and <code>Message sending failed</code> is logged if it never succeeds. Watch the jobs in Horizon, or in the failed jobs table.</p>
+        <p>The job posts the request, at once on the sync queue or from a worker otherwise. Any successful answer from Connect ends the job and Connect takes over delivery. Any error answer, or no answer, throws. On a real queue the job is tried again after about 60 seconds, then about 90, and after the third failure <code>Message sending failed</code> is logged and the job lands in the failed jobs table. Watch the jobs in Horizon, or with <code>php artisan queue:failed</code>.</p>
     </x-essentials::docs.section>
 @endsection

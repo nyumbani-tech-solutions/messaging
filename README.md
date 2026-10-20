@@ -14,7 +14,7 @@ NYUMBANI_CONNECT_TOKEN=
 MESSAGING_SMS_SENDER_ID=NYUMBANI
 ```
 
-Messages are queued, so run a queue worker (`php artisan queue:work` or Horizon).
+Messages go through your queue. With `QUEUE_CONNECTION=sync` they are sent during the request and nothing else is needed; with any other connection, run a queue worker (`php artisan queue:work` or Horizon).
 
 ## Send an SMS
 
@@ -55,7 +55,7 @@ Publish `config/messaging.php` with `php artisan vendor:publish --tag=messaging-
 | `connect.sms.sender_id` | `MESSAGING_SMS_SENDER_ID` | Sender when a message has none |
 | `connect.sms.uri` | | Connect path for SMS |
 
-A failed request throws, so the queue retries it up to 25 times (60, 90, then 120 seconds apart) and logs `Message sending failed` when it gives up.
+A failed request throws, so the queue tries again: a job is allowed three failures (about 60 seconds, then 90, between them) and then logs `Message sending failed`. Waiting for the rate limit is not a failure.
 
 ## Docs
 

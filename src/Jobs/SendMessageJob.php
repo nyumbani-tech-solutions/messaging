@@ -43,12 +43,19 @@ class SendMessageJob implements ShouldQueue
     }
 
     /**
-     * Define the middleware for the job
+     * Define the middleware for the job, which is the rate limit unless the job runs at once on the sync queue
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     public function middleware(): array
     {
+        //  The sync queue runs the job in the request and cannot release it for later, so a limited job would be lost
+        $connection = $this->connection ?? config('queue.default');
+
+        if (config("queue.connections.{$connection}.driver") === 'sync') {
+            return [];
+        }
+
         return [(new RateLimited('messaging.rate-limit'))->releaseAfter(10)];
     }
 

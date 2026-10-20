@@ -5,7 +5,7 @@
 
 @section('content')
     <x-essentials::docs.section id="overview" title="Message">
-        <p><code>Nyumbani\Messaging\Message</code> builds one SMS. Every method except <code>toSMS()</code> returns the same message, so calls chain. A message is made with <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
+        <p><code>Nyumbani\Messaging\Message</code> builds one SMS. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
         <p>The text of the SMS is put together in this order, with a blank line between the header and the rest, and between the body and the footer:</p>
         <x-essentials::docs.code lang="text" title="Layout of the text">
             {header}
@@ -123,7 +123,7 @@
         <x-essentials::docs.table :columns="['Class', 'What it does']" :rows="[
             ['MessageProcessed', 'The event. new MessageProcessed($payload, $tags) or MessageProcessed::dispatch($payload, $tags); the payload is keyed by channel and the tags are added to the queued jobs.'],
             ['SendMessageNotifications', 'The listener. Sends the sms messages to SmsGateway unless SMS is switched off.'],
-            ['SendMessageJob', 'Posts one request to Connect. Rate limited, 25 tries, retried after 60, 90 and 120 seconds, and logs when it gives up.'],
+            ['SendMessageJob', 'Posts one request to Connect. Rate limited, and fails for good after 3 failed requests (waiting about 60, then 90 seconds), logging Message sending failed.'],
             ['Gateways\\Gateway, Gateways\\SmsGateway', 'See Gateways.'],
         ]" />
     </x-essentials::docs.section>

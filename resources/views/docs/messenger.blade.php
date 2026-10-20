@@ -52,6 +52,10 @@
             ['on', 'on, or the scope does not control its channels', 'on'],
             ['on', 'off', 'off'],
         ]" />
+            <x-essentials::docs.playground demo="scope" title="Try the switches" :fields="[
+            ['name' => 'global', 'label' => 'Global switch (MESSAGING_SMS_ENABLED)', 'type' => 'select', 'value' => 'on', 'options' => ['on' => 'on', 'off' => 'off']],
+            ['name' => 'scope', 'label' => 'The scope', 'type' => 'select', 'value' => 'on', 'options' => ['on' => 'SMS on for the project', 'off' => 'SMS off for the project', 'none' => 'No scope (Messenger::global())']],
+        ]" />
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="flow" title="2. Stop early, then message each recipient">

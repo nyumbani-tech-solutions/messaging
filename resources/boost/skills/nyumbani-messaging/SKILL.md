@@ -48,10 +48,10 @@ Implement `Nyumbani\Messaging\Contracts\MessageScope` (`isMessageChannelEnabled(
 Require `nyumbani/messaging`, then set `NYUMBANI_CONNECT_BASE_URL`, `NYUMBANI_CONNECT_TOKEN` and, optionally, `MESSAGING_SMS_SENDER_ID` in `.env`. The rest lives in `messaging.connect.sms`: `enabled`, `sender_id` and `uri`. `messaging.rate_limit_per_second` caps the speed. Publish the file with the `messaging-config` tag.
 
 ## When nothing arrives
-- A queue worker must be running; the sends are queued.
+- On the `sync` queue the SMS is sent during the request and no worker is needed (a Connect failure then throws to the caller and is not retried). On any other queue connection a worker must be running.
 - A number under nine digits is dropped silently.
 - `MESSAGING_SMS_ENABLED=false` skips every SMS.
-- A failing Connect request retries 25 times and then logs `Message sending failed`.
+- A failing Connect request is tried again after about 60 and 90 seconds, and after the third failure the job fails and logs `Message sending failed`. Check the failed jobs table.
 
 ## Testing
 Call `Queue::fake()`, dispatch `MessageProcessed`, and assert `SendMessageJob` was pushed. To test delivery, use `Http::fake(['*' => ...])` and call `handle()` on the job.

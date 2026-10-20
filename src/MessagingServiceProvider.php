@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Nyumbani\Essentials\Docs\Docs;
 use Nyumbani\Essentials\Docs\DocsRegistry;
+use Nyumbani\Messaging\Docs\MessagingDemos;
 use Nyumbani\Messaging\Events\MessageProcessed;
 use Nyumbani\Messaging\Listeners\SendMessageNotifications;
 
@@ -107,7 +108,9 @@ class MessagingServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'messaging');
 
         //  Describe the pages
-        $this->app->make(DocsRegistry::class)->register(new Docs('nyumbani-messaging', 'Messaging', [
+        $demos = new MessagingDemos;
+
+        $this->app->make(DocsRegistry::class)->register((new Docs('nyumbani-messaging', 'Messaging', [
             ['title' => 'Getting started', 'pages' => [
                 'introduction' => 'Introduction',
                 'installation' => 'Installation',
@@ -119,10 +122,14 @@ class MessagingServiceProvider extends ServiceProvider
                 'sending-without-handlers' => 'Sending SMS without handlers',
                 'messenger' => 'Messenger',
                 'gateways' => 'Gateways',
+                'testing-and-troubleshooting' => 'Testing and troubleshooting',
             ]],
             ['title' => 'Reference', 'pages' => [
                 'message' => 'Message reference',
             ]],
-        ], 'messaging::docs'));
+        ], 'messaging::docs'))
+            ->demo('message', $demos->message(...))
+            ->demo('scope', $demos->scope(...))
+            ->demo('send', $demos->send(...)));
     }
 }
