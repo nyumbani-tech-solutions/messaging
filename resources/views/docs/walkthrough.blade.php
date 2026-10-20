@@ -79,7 +79,7 @@
                         ->recipient($tenant)
                         ->salutation()
                         ->handler($handler)
-                        ->toSMS('ACME'))->all();
+                        ->toSMS())->all();
 
                     MessageProcessed::dispatch(['sms' => $messages], ['invoice-issued']);
 
@@ -91,7 +91,7 @@
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="item" title="5. What toSMS() returns">
-        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> and <code>Thank you</code> from <code>messageFooter()</code>.</p>
+        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> <code>Thank you</code> from <code>messageFooter()</code> and the sender <code>ACME</code> from <code>messageSenderId()</code>.</p>
         <x-essentials::docs.code lang="json" title="First payload item">
             {
                 "scope_type": "property",

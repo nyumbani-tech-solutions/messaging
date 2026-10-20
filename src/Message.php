@@ -29,6 +29,11 @@ class Message
     protected ?string $footer = null;
 
     /**
+     * The sender ID the message is sent from, or null for the default
+     */
+    protected ?string $senderId = null;
+
+    /**
      * The model the message is sent to
      */
     protected ?Model $recipient = null;
@@ -109,6 +114,20 @@ class Message
     {
         //  Set the footer
         $this->footer = $footer;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the sender ID the message is sent from, null for the default
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function senderId(?string $senderId): static
+    {
+        //  Set the sender ID
+        $this->senderId = $senderId;
 
         //  Return the message
         return $this;
@@ -260,7 +279,7 @@ class Message
     }
 
     /**
-     * Get the SMS payload item for the recipient, who must have a phone_number
+     * Get the SMS payload item for the recipient, from the sender given, the message's sender or the default
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -281,7 +300,7 @@ class Message
             'scope_id' => $this->scope?->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
-            'sender_id' => $senderId,
+            'sender_id' => $senderId ?? $this->senderId,
             'number' => $recipient->phone_number,
             'text' => "{$header}{$this->salutation}{$this->body}{$footer}",
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],

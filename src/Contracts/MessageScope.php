@@ -26,4 +26,11 @@ interface MessageScope
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     public function messageFooter(): ?string;
+
+    /**
+     * Get the sender ID every message of this model is sent from, or null for the default
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function messageSenderId(): ?string;
 }

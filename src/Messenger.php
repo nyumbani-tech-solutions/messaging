@@ -9,7 +9,7 @@ use Nyumbani\Messaging\Enums\MessageChannel;
 class Messenger
 {
     /**
-     * The scope's header and footer, worked out once, and null until then
+     * The scope's header, footer and sender ID, worked out once, and null until then
      */
     protected ?array $frame = null;
 
@@ -43,16 +43,17 @@ class Messenger
     }
 
     /**
-     * Start a message to a recipient, scoped to the messenger's scope and framed by the scope's header and footer
+     * Start a message to a recipient, scoped to the messenger's scope and framed by the scope's header, footer and sender ID
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     public function recipient(Model $recipient): Message
     {
-        //  Work out the header and footer once, for all the recipients
-        [$header, $footer] = $this->frame ??= [
+        //  Work out the header, footer and sender ID once, for all the recipients
+        [$header, $footer, $senderId] = $this->frame ??= [
             $this->scope?->messageHeader(),
             $this->scope?->messageFooter(),
+            $this->scope?->messageSenderId(),
         ];
 
         //  Return the message
@@ -60,7 +61,8 @@ class Messenger
             ->recipient($recipient)
             ->scope($this->scope)
             ->header($header)
-            ->footer($footer);
+            ->footer($footer)
+            ->senderId($senderId);
     }
 
     /**

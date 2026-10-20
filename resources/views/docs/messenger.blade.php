@@ -1,7 +1,7 @@
 @extends('essentials::docs.layout')
 
 @section('page', 'Messenger')
-@section('lead', 'One object per project or organisation: the scope supplies the on/off switches and the header and footer, and the messenger starts every message.')
+@section('lead', 'One object per project or organisation: the scope supplies the on/off switches, the header, footer and sender ID, and the messenger starts every message.')
 
 @section('content')
     <x-essentials::docs.section id="what" title="What the messenger is">
@@ -9,14 +9,14 @@
         <x-essentials::docs.table :columns="['Method', 'What it does']" :rows="[
             ['Messenger::for($scope)', 'Makes the messenger for a scope. The scope is required and must be a model that implements MessageScope, or a TypeError is thrown.'],
             ['Messenger::global()', 'Makes the messenger for no scope: only the global switches apply, and its messages have no scope.'],
-            ['recipient(Model $recipient)', 'Starts a Message for the recipient, scoped to the messenger and framed by the scope\'s messageHeader() and messageFooter(). The scope is asked once per messenger, not once per recipient.'],
+            ['recipient(Model $recipient)', 'Starts a Message for the recipient, scoped to the messenger and framed by the scope\'s messageHeader(), messageFooter() and messageSenderId(). The scope is asked once per messenger, not once per recipient.'],
             ['isEnabled(MessageChannel $channel), smsEnabled()', 'True when the channel is on globally and for the scope.'],
             ['canSend()', 'True when at least one channel is on.'],
         ]" />
     </x-essentials::docs.section>
 
     <x-essentials::docs.section id="implement" title="1. Let the scope answer">
-        <p>Implement <code>MessageScope</code> on the model that owns the setting. It is asked about one <code>MessageChannel</code> at a time, and for the header and footer of its messages. Either of those can be any computation, and null means none.</p>
+        <p>Implement <code>MessageScope</code> on the model that owns the setting. It is asked about one <code>MessageChannel</code> at a time, and for the header, footer and sender ID of its messages. Any of those can be a computation, and null means none (the default sender for the sender ID).</p>
         <x-essentials::docs.code title="app/Models/Project.php">
             use Illuminate\Database\Eloquent\Model;
             use Nyumbani\Messaging\Contracts\MessageScope;
@@ -39,6 +39,11 @@
                 public function messageFooter(): ?string
                 {
                     return $this->setting('message_footer');
+                }
+
+                public function messageSenderId(): ?string
+                {
+                    return $this->setting('sms_sender_id');
                 }
             }
         </x-essentials::docs.code>
@@ -65,7 +70,7 @@
                 ->recipient($admin)
                 ->salutation()
                 ->handler(new BudgetReachedMessageHandler($categoryRows))
-                ->toSMS('ACME'))->all();
+                ->toSMS())->all();
 
             MessageProcessed::dispatch(['sms' => $sms], ['budget']);
         </x-essentials::docs.code>
@@ -83,6 +88,7 @@
         <ul class="ml-5 list-disc space-y-1">
             <li>The scope's <code>messageHeader()</code> and <code>messageFooter()</code> are worked out once, the first time <code>recipient()</code> is called, and every message copies them. A null answer leaves the header or footer out together with its blank line.</li>
             <li>On one message, <code>header()</code> or <code>footer()</code> replaces what the scope gave, and null drops it.</li>
+            <li>The sender goes to Connect from the first of these that is set: the argument of <code>toSMS('ACME')</code>, the scope's <code>messageSenderId()</code> (or <code>senderId()</code> on the message), then the <code>messaging.connect.sms.sender_id</code> default.</li>
             <li><code>Messenger::global()</code> has no scope, so its messages have no header or footer unless you set them on the message.</li>
             <li><code>salutation()</code> with no argument uses the recipient's <code>name</code>. <code>salutation('Mr Otieno')</code> sets it by hand, and <code>salutation(null)</code> removes it. It is never added on its own.</li>
             <li>The order of the calls does not matter: the text is put together when <code>toSMS()</code> runs.</li>

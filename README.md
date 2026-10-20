@@ -40,7 +40,7 @@ A handler owns the wording of one message type: it takes its inputs in the const
 
 ## Messenger
 
-`Messenger::for($project)` holds the channel switches (the scope is required and must implement `MessageScope`, which also supplies `messageHeader()` and `messageFooter()`, each `?string`; use `Messenger::global()` when there is none) and starts messages: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. Implement `Nyumbani\Messaging\Contracts\MessageScope` on the project to switch SMS off for it. `canSend()` answers early, and the listener drops messages whose scope has the channel off. See the Messenger docs page.
+`Messenger::for($project)` holds the channel switches (the scope is required and must implement `MessageScope`, which also supplies `messageHeader()`, `messageFooter()` and `messageSenderId()`, each `?string`; use `Messenger::global()` when there is none) and starts messages: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. Implement `Nyumbani\Messaging\Contracts\MessageScope` on the project to switch SMS off for it. `canSend()` answers early, and the listener drops messages whose scope has the channel off. See the Messenger docs page.
 
 ## Configuration
 

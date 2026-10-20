@@ -30,6 +30,7 @@
             ['header(?string $header)', 'Sets the line shown above everything, such as an organisation name. Null removes it.'],
             ['salutation(?string $name = null)', 'With a name, opens the body with Dear {name}, . With no argument, uses the recipient\'s name and needs recipient() first. Null removes it.'],
             ['footer(?string $footer)', 'Sets the line shown below the body. Null removes it.'],
+            ['senderId(?string $senderId)', 'Sets the sender ID the message is sent from. Null means the default sender. A Messenger sets it from the scope.'],
         ]" />
         <x-essentials::docs.code title="Example">
             use Nyumbani\Messaging\Message;
@@ -92,7 +93,7 @@
 
     <x-essentials::docs.section id="to-sms" title="Turning it into a payload">
         <x-essentials::docs.table :columns="['Method', 'What it does']" :rows="[
-            ['toSMS(?string $senderId = null)', 'Returns the payload item for the recipient. Throws a LogicException when no recipient was set.'],
+            ['toSMS(?string $senderId = null)', 'Returns the payload item for the recipient. The sender is the argument, else senderId(), else the default. Throws a LogicException when no recipient was set.'],
         ]" />
         <x-essentials::docs.code title="Example">
             $item = $message->toSMS('ACME');
@@ -100,7 +101,7 @@
         <x-essentials::docs.table :columns="['Key', 'Value']" :rows="[
             ['scope_type, scope_id', 'The morph class and key of the scope set with scope(), or null when none was set.'],
             ['client_type, client_id', 'The morph class and key of the recipient.'],
-            ['sender_id', 'The sender given, or null so the configured sender is used.'],
+            ['sender_id', 'The sender from the argument or senderId(), or null so the configured default sender is used.'],
             ['number', 'The recipient\'s phone_number, as stored. The gateway turns it into 254 and the last nine digits.'],
             ['text', 'The full text: header, salutation, body and footer.'],
             ['meta_data', 'app_url plus anything added with metaData().'],
