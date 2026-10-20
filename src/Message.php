@@ -3,6 +3,8 @@
 namespace Nyumbani\Messaging;
 
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
+use Nyumbani\Messaging\Contracts\MessageScope;
 
 class Message
 {
@@ -27,9 +29,14 @@ class Message
     protected ?string $footer = null;
 
     /**
-     * The model the message belongs to, such as an organization
+     * The model the message is sent to
      */
-    protected ?Model $scope = null;
+    protected ?Model $recipient = null;
+
+    /**
+     * The model that owns the message, such as a project or an organization
+     */
+    protected (Model&MessageScope)|null $scope = null;
 
     /**
      * The meta data sent along with the message
@@ -47,6 +54,20 @@ class Message
     }
 
     /**
+     * Set the model the message is sent to, who must have a phone_number
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function recipient(Model $recipient): static
+    {
+        //  Set the recipient
+        $this->recipient = $recipient;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
      * Set the header
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
@@ -61,12 +82,17 @@ class Message
     }
 
     /**
-     * Address the message to a name
+     * Address the message to a name, or to the recipient's name when none is given
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function salutation(?string $name): static
+    public function salutation(?string $name = null): static
     {
+        //  Use the recipient's name when called without an argument
+        if (func_num_args() === 0) {
+            $name = $this->requireRecipient('salutation()')->name;
+        }
+
         //  Set the salutation
         $this->salutation = $name ? "Dear {$name}, " : null;
 
@@ -89,11 +115,11 @@ class Message
     }
 
     /**
-     * Set the model the message belongs to
+     * Set the model that owns the message, which controls its message channels
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function scope(?Model $scope): static
+    public function scope((Model&MessageScope)|null $scope): static
     {
         //  Set the scope
         $this->scope = $scope;
@@ -214,6 +240,16 @@ class Message
     }
 
     /**
+     * Get the model the message is sent to, which a handler may read
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function getRecipient(): ?Model
+    {
+        return $this->recipient;
+    }
+
+    /**
      * Get the message body
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
@@ -224,12 +260,15 @@ class Message
     }
 
     /**
-     * Get the SMS payload item for a recipient, who must have a phone_number
+     * Get the SMS payload item for the recipient, who must have a phone_number
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function toSMS(Model $recipient, ?string $senderId = null): array
+    public function toSMS(?string $senderId = null): array
     {
+        //  Get the recipient
+        $recipient = $this->requireRecipient('toSMS()');
+
         //  Separate the header
         $header = $this->header ? "{$this->header}\n\n" : '';
 
@@ -247,5 +286,16 @@ class Message
             'text' => "{$header}{$this->salutation}{$this->body}{$footer}",
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
         ];
+    }
+
+    /**
+     * Get the recipient, or throw when none was set
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function requireRecipient(string $method): Model
+    {
+        return $this->recipient
+            ?? throw new LogicException("{$method} needs a recipient: call recipient() first.");
     }
 }

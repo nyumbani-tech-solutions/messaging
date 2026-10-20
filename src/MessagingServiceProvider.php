@@ -110,10 +110,16 @@ class MessagingServiceProvider extends ServiceProvider
                 'introduction' => 'Introduction',
                 'installation' => 'Installation',
                 'configuration' => 'Configuration',
+                'walkthrough' => 'Walkthrough',
             ]],
             ['title' => 'Using Messaging', 'pages' => [
-                'sending' => 'Sending an SMS',
+                'sending-with-handlers' => 'Sending SMS with handlers',
+                'sending-without-handlers' => 'Sending SMS without handlers',
+                'messenger' => 'Messenger',
                 'gateways' => 'Gateways',
+            ]],
+            ['title' => 'Reference', 'pages' => [
+                'message' => 'Message reference',
             ]],
         ], 'messaging::docs'));
     }

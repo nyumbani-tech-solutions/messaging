@@ -23,14 +23,24 @@ use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
 use Nyumbani\Messaging\Message;
 use Nyumbani\Messaging\MessageProcessed;
 
-$message = Message::make()
-    ->salutation($user->name)
-    ->handler(new CheckInOtpMessageHandler($code));
+$sms = Message::make()
+    ->recipient($user)
+    ->salutation()
+    ->handler(new CheckInOtpMessageHandler($code))
+    ->toSMS('ACME');
 
-MessageProcessed::dispatch(['sms' => [$message->toSMS($user)]], ['otp']);
+MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
 ```
 
 The recipient is a model with a `phone_number`. Numbers become `254` plus the last nine digits, messages are grouped by sender ID, and Connect always receives a list of messages.
+
+## Handlers
+
+A handler owns the wording of one message type: it takes its inputs in the constructor and writes the body in `handle()`. A protected method of the handler builds a variant, chosen with `handler($handler, 'reminder')`; any other method name throws an `InvalidArgumentException`. See the Sending SMS with handlers docs page.
+
+## Messenger
+
+`Messenger::for($project)` holds the channel switches (the scope is required and must implement `MessageScope`, which also supplies `messageHeader()` and `messageFooter()`, each `?string`; use `Messenger::global()` when there is none) and starts messages: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. Implement `Nyumbani\Messaging\Contracts\MessageScope` on the project to switch SMS off for it. `canSend()` answers early, and the listener drops messages whose scope has the channel off. See the Messenger docs page.
 
 ## Configuration
 

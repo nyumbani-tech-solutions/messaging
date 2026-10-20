@@ -11,10 +11,10 @@ Every message goes out through Nyumbani Connect. Do not call a provider such as 
 
 ## Flow
 1. Build the text with `Nyumbani\Messaging\Message`.
-2. Put it in a payload: `['sms' => [$message->toSMS($recipient, $senderId)]]`.
+2. Start with `->recipient($model)` (or `$messenger->recipient($model)`), and finish with `->toSMS($senderId)` right after the handler (or the last body call). Put the result in a payload: `['sms' => [$sms]]`.
 3. Dispatch `MessageProcessed::dispatch($payload, $tags)`.
 
-The package listener queues the SMS through `SmsGateway`, which cleans the numbers, groups them by `sender_id`, chunks them by 1000 and queues one `SendMessageJob` per chunk.
+The package listener queues the SMS through `SmsGateway`, which cleans the numbers, groups them by `sender_id`, chunks them by 500 and queues one `SendMessageJob` per chunk.
 
 ## Gateways
 A channel is a class extending the abstract `Gateway`, which cleans, batches and queues the messages. It implements `normalise()`, `format()` and `deliver()` (throw on failure), and may override `batches()`. `SmsGateway` is the only one today.
@@ -29,13 +29,20 @@ use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
 use Nyumbani\Messaging\Message;
 use Nyumbani\Messaging\MessageProcessed;
 
-$message = Message::make()->salutation($user->name)->handler(new CheckInOtpMessageHandler($code));
+$sms = Message::make()->recipient($user)->salutation()->handler(new CheckInOtpMessageHandler($code))->toSMS('ACME');
 
-MessageProcessed::dispatch(['sms' => [$message->toSMS($user)]], ['otp']);
+MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
 ```
 
+For a user named Jane and the code 1234, the text sent is `Dear Jane, Your code is 1234.` (`salutation()` with no argument uses the recipient's name).
+
 ## Payload attributes
-`toSMS($recipient, $senderId = null)` takes a model with a `phone_number` and returns the item: `scope_type`, `scope_id`, `client_type`, `client_id`, `sender_id`, `number`, `text` and `meta_data`. The recipient is the client, so Connect can trace the message to a record. Set the scope with `scope($model)` and extra meta data with `metaData([...])`; `app_url` is always sent.
+`recipient($model)` takes a model with a `phone_number`, and `toSMS($senderId = null)` returns the item: `scope_type`, `scope_id`, `client_type`, `client_id`, `sender_id`, `number`, `text` and `meta_data`. The recipient is the client, so Connect can trace the message to a record. A message has no scope (`scope_type` and `scope_id` are null) unless `scope($model)`, which must be a `MessageScope`, or a messenger sets one. Add extra meta data with `metaData([...])`; `app_url` is always sent. `toSMS()` and `salutation()` (no argument) throw a `LogicException` without a recipient.
+
+## Messenger: switching SMS off per scope
+`Messenger::for($project)` holds the channel switches and takes the header and footer from the scope's `messageHeader()` and `messageFooter()` (each `?string`, null for none, worked out once per messenger). The scope is required and must be a model implementing `MessageScope`, otherwise a `TypeError`; `Messenger::global()` is for no scope and starts messages with the scope, header and footer set: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. `salutation()` with no argument uses the recipient's `name`; it is never added on its own.
+
+Implement `Nyumbani\Messaging\Contracts\MessageScope` (`isMessageChannelEnabled(MessageChannel $channel)`) on the model that owns the setting, such as a project. Ask `$messenger->canSend()` or `->smsEnabled()` before building messages. The gate is the global `messaging.connect.sms.enabled` switch and the scope's answer; a message scoped to a model that does not implement the interface (its own recipient, say) is never blocked by it. The listener drops messages whose scope has the channel off (one query per scope type), so start messages from the messenger and the project's switch is always the one that counts.
 
 ## Settings
 Require `nyumbani/messaging`, then set `NYUMBANI_CONNECT_BASE_URL`, `NYUMBANI_CONNECT_TOKEN` and, optionally, `MESSAGING_SMS_SENDER_ID` in `.env`. The rest lives in `messaging.connect.sms`: `enabled`, `sender_id` and `uri`. `messaging.rate_limit_per_second` caps the speed. Publish the file with the `messaging-config` tag.
