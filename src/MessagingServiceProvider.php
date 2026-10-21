@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Nyumbani\Essentials\Docs\Docs;
-use Nyumbani\Essentials\Docs\DocsRegistry;
+use Nyumbani\Docs\Docs;
+use Nyumbani\Docs\DocsRegistry;
 use Nyumbani\Messaging\Docs\MessagingDemos;
 use Nyumbani\Messaging\Events\MessageProcessed;
 use Nyumbani\Messaging\Listeners\SendMessageNotifications;
@@ -47,7 +47,7 @@ class MessagingServiceProvider extends ServiceProvider
         //  Define the listener
         $this->handleListener();
 
-        //  Add the docs when Nyumbani Essentials is installed to show them
+        //  Add the docs when Nyumbani Docs is installed to show them
         $this->registerDocs();
     }
 
@@ -93,13 +93,13 @@ class MessagingServiceProvider extends ServiceProvider
     }
 
     /**
-     * Add the Messaging docs to the Nyumbani docs, which Essentials serves
+     * Add the Messaging docs to the Nyumbani docs, which Nyumbani Docs serves
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     protected function registerDocs(): void
     {
-        //  Skip when Essentials is not installed
+        //  Skip when Nyumbani Docs is not installed
         if (! class_exists(DocsRegistry::class)) {
             return;
         }

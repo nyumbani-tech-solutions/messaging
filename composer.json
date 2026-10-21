@@ -20,8 +20,11 @@
 		"php": "^8.3",
 		"laravel/framework": "^12.0||^13.0"
 	},
+	"require-dev": {
+		"nyumbani/docs": "^1.0"
+	},
 	"suggest": {
-		"nyumbani/essentials": "Serves the Messaging docs at /nyumbani-messaging/docs in the local environment."
+		"nyumbani/docs": "Serves the Messaging docs at /nyumbani-messaging/docs in the local environment, in any Laravel app. Nyumbani Essentials requires it."
 	},
 	"autoload": {
 		"psr-4": {
