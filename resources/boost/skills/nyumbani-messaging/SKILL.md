@@ -54,4 +54,4 @@ Require `nyumbani/messaging`, then set `NYUMBANI_CONNECT_BASE_URL`, `NYUMBANI_CO
 - A failing Connect request is tried again after about 60 and 90 seconds, and after the third failure the job fails and logs `Message sending failed`. Check the failed jobs table.
 
 ## Testing
-Call `Queue::fake()`, dispatch `MessageProcessed`, and assert `SendMessageJob` was pushed. To test delivery, use `Http::fake(['*' => ...])` and call `handle()` on the job.
+Call `Queue::fake()`, dispatch `MessageProcessed`, and assert `SendMessageJob` was pushed (`$job->payload[0]['recipient']` is the cleaned `254` number). To test delivery, use `Http::fake(['*' => ...])` and call `handle()` on the job. Never contact Connect from the suite.
