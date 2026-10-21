@@ -37,5 +37,6 @@
         <x-essentials::docs.code lang="bash" title="Terminal">
             php artisan vendor:publish --tag=messaging-config
         </x-essentials::docs.code>
+        <p>In an app that uses Nyumbani Essentials, <code>php artisan nyumbani:install</code> publishes it for you.</p>
     </x-essentials::docs.section>
 @endsection
