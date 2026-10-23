@@ -47,7 +47,7 @@ class MessagingServiceProvider extends ServiceProvider
         //  Define the listener
         $this->handleListener();
 
-        //  Add the docs when Nyumbani Docs is installed to show them
+        //  Add the docs, which Nyumbani Docs serves
         $this->registerDocs();
     }
 
@@ -99,11 +99,6 @@ class MessagingServiceProvider extends ServiceProvider
      */
     protected function registerDocs(): void
     {
-        //  Skip when Nyumbani Docs is not installed
-        if (! class_exists(DocsRegistry::class)) {
-            return;
-        }
-
         //  Load the views of the pages
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'messaging');
 

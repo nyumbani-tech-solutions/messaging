@@ -59,4 +59,4 @@ A failed request throws, so the queue tries again: a job is allowed three failur
 
 ## Docs
 
-With `nyumbani/docs` installed (Essentials requires it), the docs are served locally at `/nyumbani-messaging/docs`, in any Laravel app.
+The package requires `nyumbani/docs`, which serves the docs locally at `/nyumbani-messaging/docs`, in any Laravel app.
