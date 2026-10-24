@@ -59,4 +59,4 @@ A failed request throws, so the queue tries again: a job is allowed three failur
 
 ## Docs
 
-The package requires `nyumbani/docs`, which serves the docs locally at `/nyumbani-messaging/docs`, in any Laravel app.
+The package suggests `nyumbani/docs` (install it with `composer require --dev nyumbani/docs`), which then serves the docs locally at `/nyumbani-messaging/docs`, in any Laravel app. The package works without it.

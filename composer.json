@@ -18,8 +18,13 @@
 	],
 	"require": {
 		"php": "^8.3",
-		"laravel/framework": "^12.0||^13.0",
+		"laravel/framework": "^12.0||^13.0"
+	},
+	"require-dev": {
 		"nyumbani/docs": "^1.1"
+	},
+	"suggest": {
+		"nyumbani/docs": "The local-only guides of Nyumbani packages, chosen in php artisan nyumbani:install and installed with composer require --dev nyumbani/docs"
 	},
 	"autoload": {
 		"psr-4": {

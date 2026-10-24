@@ -47,8 +47,10 @@ class MessagingServiceProvider extends ServiceProvider
         //  Define the listener
         $this->handleListener();
 
-        //  Add the docs, which Nyumbani Docs serves
-        $this->registerDocs();
+        //  Add the docs, which Nyumbani Docs serves, when it is installed
+        if (class_exists(DocsRegistry::class)) {
+            $this->registerDocs();
+        }
     }
 
     /**
