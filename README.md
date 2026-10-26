@@ -2,17 +2,34 @@
 
 Queue SMS from any Nyumbani app through Nyumbani Connect: a message builder, one handler class per message type, and rate-limited, retried delivery. It requires only Laravel.
 
+## Requirements
+
+- PHP 8.3 or newer and Laravel 12 or 13
+- An access token for Nyumbani Connect
+
 ## Install
+
+1. Require it:
 
 ```
 composer require nyumbani/messaging
 ```
+
+2. Set the Connect address and token in `.env`:
 
 ```
 NYUMBANI_CONNECT_BASE_URL=
 NYUMBANI_CONNECT_TOKEN=
 MESSAGING_SMS_SENDER_ID=NYUMBANI
 ```
+
+3. Optionally publish the configuration (see Configuration below):
+
+```
+php artisan vendor:publish --tag=messaging-config
+```
+
+4. Make sure messages can be sent. In an app with `nyumbani/essentials`, `php artisan nyumbani:install --with=messaging` does steps 1 to 3 for you.
 
 Messages go through your queue. With `QUEUE_CONNECTION=sync` they are sent during the request and nothing else is needed; with any other connection, run a queue worker (`php artisan queue:work` or Horizon).
 
