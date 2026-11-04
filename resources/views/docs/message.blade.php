@@ -5,7 +5,9 @@
 
 @section('content')
     <x-docs::section id="overview" title="Message">
-        <p><code>Nyumbani\Messaging\Message</code> builds one SMS or email. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code>, <code>toEmail()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>message()</code> or <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
+        <p>This page is the reference. If you are new to the package, start with <a href="{{ $docs->url('scopes') }}" class="text-primary underline">Scopes and identity</a>, <a href="{{ $docs->url('writing-messages') }}" class="text-primary underline">Writing a message</a> and <a href="{{ $docs->url('sending') }}" class="text-primary underline">Sending</a>, which explain the ideas behind these methods.</p>
+        <p><code>Nyumbani\Messaging\Message</code> builds one SMS or email for one scope: the project or organisation that owns it. A message without a scope is refused. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code>, <code>toEmail()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>message()</code> or <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
+        <p>On every message setter, <strong>null means not set</strong>: it clears what you set before, and the scope's value applies again. To send a message with no header or footer even though the scope has one, use <code>withoutHeader()</code> or <code>withoutFooter()</code>.</p>
         <p>The text of the SMS is put together in this order, with a blank line between the header and the rest, and between the body and the footer:</p>
         <x-docs::code lang="text" title="Layout of the text">
             {header}
@@ -22,10 +24,12 @@
         <x-docs::table :columns="['Method', 'Works with', 'Group', 'Returns', 'What it does']" :rows="[
             ['make()', 'Both', 'Create', 'static', 'Returns a new message. The message() helper does the same. Never use new.'],
             ['recipient(Model $recipient)', 'Both', 'Who it is for', 'message', 'The model the message is sent to: a phone_number for SMS, an email and a name for email.'],
-            ['scope((Model&MessageScope)|null $scope)', 'Both', 'Who it is for', 'message', 'The model that owns the message, which controls its channels for SMS and email. Sent to Connect as scope_type and scope_id, and not sent to ZeptoMail.'],
-            ['header(?string $header)', 'Both', 'Frame', 'message', 'The line above the salutation. Null removes it.'],
+            ['scope(Model&MessageScope $scope)', 'Both', 'Who it is for', 'message', 'Required. The model that owns the message, which controls its channels and defines who it is from. Sent to Connect as scope_type and scope_id. toSMS(), toEmail(), send() and sendTo() throw a LogicException without one.'],
+            ['header(?string $header)', 'Both', 'Frame', 'message', 'The line above the salutation. Without it, the scope\'s identity header.'],
+            ['withoutHeader()', 'Both', 'Frame', 'message', 'Sends the message with no header, even when the scope has one.'],
             ['salutation(bool $include = true)', 'Both', 'Frame', 'message', 'Opens the body with Dear {recipient name},. Not calling it leaves it out, and salutation(false) removes it.'],
-            ['footer(?string $footer)', 'Both', 'Frame', 'message', 'The line below the body. Null removes it.'],
+            ['footer(?string $footer)', 'Both', 'Frame', 'message', 'The line below the body. Without it, the scope\'s identity footer.'],
+            ['withoutFooter()', 'Both', 'Frame', 'message', 'Sends the message with no footer, even when the scope has one.'],
             ['text(string $text = \'\')', 'Both', 'Body', 'message', 'Appends text, collapsing repeated spaces but keeping new lines.'],
             ['newLine(int $count = 1)', 'Both', 'Body', 'message', 'Appends new lines.'],
             ['action(string $link, string $action)', 'Both', 'Body', 'message', 'Appends a label and its link, such as Pay now: https://...'],
@@ -33,21 +37,21 @@
             ['append(string $text)', 'Both', 'Body', 'message', 'Puts text at the end of the body, as is.'],
             ['when(bool $condition, callable $then, ?callable $else = null)', 'Both', 'Body', 'message', 'Builds part of the message only when the condition holds.'],
             ['handler(MessageHandler $handler, string $method = \'handle\')', 'Both', 'Body', 'message', 'Builds the body with a handler. The method must be on the handler and need no arguments. The email shares this body unless it has its own.'],
-            ['senderId(string $senderId)', 'SMS', 'SMS settings', 'message', 'The sender ID. Without it the scope sender or messaging.connect.sms.sender_id is used. Email ignores it.'],
+            ['senderId(?string $senderId)', 'SMS', 'SMS settings', 'message', 'The sender ID. Without it the scope sender or messaging.connect.sms.sender_id is used. Email ignores it.'],
             ['category(?string $category)', 'SMS', 'SMS settings', 'message', 'The category Connect files the SMS under. Up to 100 characters, and null or empty means none. Email ignores it.'],
             ['metaData(array $metaData)', 'SMS', 'SMS settings', 'message', 'Values Connect keeps with the SMS. Calls merge, and app_url is always added. ZeptoMail does not receive it.'],
             ['subject(?string $subject)', 'Email', 'Email settings', 'message', 'The email subject. Setting one adds the email channel unless via() chooses the channels.'],
-            ['from(string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'The sender of the email. Defaults to messaging.email.from.'],
-            ['replyTo(string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'Where replies go. Defaults to messaging.email.reply_to, then the sender.'],
-            ['logo(?string $logo)', 'Email', 'Email settings', 'message', 'The logo the template shows. Defaults to messaging.email.logo.'],
-            ['organization(?string $name)', 'Email', 'Email settings', 'message', 'The organization name the template shows. Defaults to messaging.email.organization_name, then the app name.'],
+            ['from(?string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'The sender of the email. Defaults to the scope\'s identity emailFrom; an email with neither throws.'],
+            ['replyTo(?string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'Where replies go. Defaults to the scope\'s identity emailReplyTo, then the sender.'],
+            ['logo(?string $logo)', 'Email', 'Email settings', 'message', 'The logo the template shows. Defaults to the scope\'s identity logo; an email with neither throws.'],
+            ['organization(?string $name)', 'Email', 'Email settings', 'message', 'The organization name the template shows. Defaults to the scope\'s identity organizationName; an email with neither throws.'],
             ['emailOptions(array $options)', 'Email', 'Email settings', 'message', 'Options for the email driver, such as template_key to use another ZeptoMail template.'],
             ['emailBody(?string $body)', 'Email', 'Email settings', 'message', 'A body for the email alone. Null uses the shared body.'],
             ['emailHandler(MessageHandler $handler, string $method = \'email\')', 'Email', 'Email settings', 'message', 'Builds the email body with a handler method. A handler without an email() method keeps the shared body.'],
             ['via(MessageChannel|string|array $channels)', 'Both', 'Channels and sending', 'message', 'Chooses the channels, such as \'email\' or [\'sms\', \'email\']. Without it SMS goes out, plus email when there is a subject.'],
             ['send(array|string $tags = [])', 'Both', 'Channels and sending', 'message', 'Dispatches the configured event for this message on its channels and returns it. Tags are searchable in Horizon.'],
             ['sendTo(iterable $recipients, array|string $tags = [], ?callable $each = null)', 'Both', 'Channels and sending', 'message', 'Sends a copy to each recipient on its channels, one event for every messaging.chunk_size recipients. The callback gets the copy and the recipient, and returning false skips the recipient.'],
-            ['toSMS(?string $senderId = null)', 'SMS', 'Payloads and getters', 'array', 'The SMS payload item. Throws when there is no recipient or no sender ID.'],
+            ['toSMS()', 'SMS', 'Payloads and getters', 'array', 'The SMS payload item. Throws when there is no recipient or no sender ID.'],
             ['toEmail(?string $subject = null)', 'Email', 'Payloads and getters', 'array', 'The email payload item. Throws when there is no recipient or no subject.'],
             ['getRecipient()', 'Both', 'Payloads and getters', '?Model', 'The recipient, which a handler may read.'],
             ['getBody()', 'Both', 'Payloads and getters', '?string', 'The body written so far, without the header, salutation or footer.'],
@@ -59,20 +63,23 @@
             ['recipient(Model $recipient)', 'Sets who the message is for: a model with a phone_number. Required before toSMS() and toEmail().'],
             ['getRecipient()', 'Returns the recipient, or null. A handler can read it as $this->message->getRecipient().'],
         ]" />
-        <p>A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a> starts a message with the recipient, scope, header and footer already set.</p>
+        <p>A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">The channel switches</a> starts a message with the recipient, scope, header and footer already set.</p>
     </x-docs::section>
 
     <x-docs::section id="frame" title="Header, salutation, footer">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
-            ['header(?string $header)', 'Sets the line shown above everything, such as an organisation name. Null removes it.'],
+            ['header(?string $header)', 'Sets the line shown above everything, such as an organisation name. Without it, the scope\'s identity header.'],
+            ['withoutHeader()', 'Leaves the header out, even when the scope has one.'],
             ['salutation(bool $include = true)', 'Opens the body with Dear {name}, , using the recipient\'s name, which is read when the payload is built, so it does not matter whether recipient() comes before or after. Not calling it leaves the salutation out, and salutation(false) removes it. A recipient with no name gets none.'],
-            ['footer(?string $footer)', 'Sets the line shown below the body. Null removes it.'],
-            ['senderId(string $senderId)', 'Sets the sender ID the message is sent from. Without it the configured default sender is used. A Messenger sets it from the scope when the scope has one.'],
+            ['footer(?string $footer)', 'Sets the line shown below the body. Without it, the scope\'s identity footer.'],
+            ['withoutFooter()', 'Leaves the footer out, even when the scope has one.'],
+            ['senderId(?string $senderId)', 'Sets the sender ID the message is sent from. Without it the configured default sender is used. A Messenger sets it from the scope when the scope has one.'],
         ]" />
         <x-docs::code title="Example">
             use Nyumbani\Messaging\Message;
 
             $message = Message::make()
+                ->scope($project)
                 ->header('ACME HOMES')
                 ->salutation()
                 ->footer('Thank you');
@@ -117,12 +124,12 @@
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
             ['handler(MessageHandler $handler, string $method = \'handle\')', 'Lets the handler write the body, using its handle() method or the protected method named. Throws an InvalidArgumentException for a method that cannot be used.'],
         ]" />
-        <p>See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for how to write one.</p>
+        <p>See <a href="{{ $docs->url('handlers') }}" class="text-primary underline">Message handlers</a> for how to write one.</p>
     </x-docs::section>
 
     <x-docs::section id="context" title="Scope, category and meta data">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
-            ['scope((Model&MessageScope)|null $scope)', 'Sets the model that owns the message, such as a project or an organisation. It must implement MessageScope, or a TypeError is thrown. Connect receives its morph class and key as scope_type and scope_id. Without it, or with null, the message has no scope.'],
+            ['scope(Model&MessageScope $scope)', 'Sets the model that owns the message, such as a project or an organisation. It is required and must implement MessageScope, or a TypeError is thrown. The message takes its header, footer, sender ID, organization name, logo, email sender and reply-to from the scope when it is built, unless you set them on the message.'],
             ['category(?string $category)', 'Sets the category Nyumbani Connect files the SMS under, such as invoice or payment-receipt, so its reports group the messages. Up to 100 characters: a longer one throws a LogicException, because Connect would refuse the whole request. Null or an empty string means none. A handler usually sets it in handle(), and a sendTo() callback can override it for one recipient.'],
             ['metaData(array $metaData)', 'Adds values Connect keeps with the message. Calls merge, and a later value for the same key wins.'],
         ]" />
@@ -131,13 +138,13 @@
 
     <x-docs::section id="to-sms" title="Turning it into a payload">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
-            ['toSMS(?string $senderId = null)', 'Returns the payload item for the recipient. The sender is the argument, else senderId(), else the default. Throws a LogicException when no recipient was set.'],
+            ['toSMS()', 'Returns the payload item for the recipient. The sender is senderId(), else the scope\'s, else the default. Throws a LogicException when no recipient was set.'],
         ]" />
         <x-docs::code title="Example">
-            $item = $message->toSMS('ACME');
+            $item = $message->senderId('ACME')->toSMS();
         </x-docs::code>
         <x-docs::table :columns="['Key', 'Value']" :rows="[
-            ['scope_type, scope_id', 'The morph class and key of the scope set with scope(), or null when none was set.'],
+            ['scope_type, scope_id', 'The morph class and key of the scope set with scope().'],
             ['client_type, client_id', 'The morph class and key of the recipient.'],
             ['category', 'The category set with category(), or null when none was set.'],
             ['sender_id', 'The sender from the argument, senderId() or messaging.connect.sms.sender_id. toSMS() throws a LogicException when none of them is set.'],
@@ -157,6 +164,7 @@
         ]" />
         <x-docs::code title="Example">
             message()
+                ->scope($project)
                 ->recipient($user)
                 ->salutation()
                 ->text('Your rent is due on Friday.')
@@ -164,7 +172,7 @@
                 ->via(['sms', 'email'])
                 ->send('rent');
 
-            message()->text('Rent is due Friday.')->salutation()->sendTo($tenants, 'rent');
+            message()->scope($project)->text('Rent is due Friday.')->salutation()->sendTo($tenants, 'rent');
         </x-docs::code>
         <p>Without <code>via()</code>, SMS always goes out and email only when the message has a subject. <code>send()</code> queues one job per message, so for many recipients use <code>sendTo()</code>, which batches them. Tags apply to the whole dispatch, so they are given to <code>sendTo()</code> and not per recipient. Set <code>messaging.event</code> to your own class to dispatch another event; it must extend <code>MessageProcessed</code>, and the package listens to it in place of the original.</p>
     </x-docs::section>
@@ -172,10 +180,10 @@
     <x-docs::section id="email" title="Email">
         <p>The header, salutation, body and footer are shared with the SMS. These methods only matter to an email. The recipient needs an <code>email</code> and a <code>name</code>.</p>
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
-            ['from(string $address, ?string $name = null)', 'Sets the sender of this email. Without it, messaging.email.from is used.'],
-            ['replyTo(string $address, ?string $name = null)', 'Sets where replies go. Without it, messaging.email.reply_to is used, then the sender.'],
-            ['logo(?string $logo)', 'Sets the logo URL the template shows. Without it, messaging.email.logo is used.'],
-            ['organization(?string $name)', 'Sets the organization name the template shows. Without it, messaging.email.organization_name, then the app name.'],
+            ['from(?string $address, ?string $name = null)', 'Sets the sender of this email. Without it, the scope\'s identity emailFrom; with neither, the email throws.'],
+            ['replyTo(?string $address, ?string $name = null)', 'Sets where replies go. Without it, the scope\'s identity emailReplyTo, then the sender.'],
+            ['logo(?string $logo)', 'Sets the logo URL the template shows. Without it, the scope\'s identity logo; with neither, the email throws.'],
+            ['organization(?string $name)', 'Sets the organization name the template shows. Without it, the scope\'s identity organizationName; with neither, the email throws.'],
             ['emailOptions(array $options)', 'Sets options the email driver reads. ZeptoMail reads template_key to use another template than the configured one. Calls merge.'],
             ['emailBody(?string $body)', 'Sets a body for the email alone. Null sends the shared body again.'],
             ['emailHandler(MessageHandler $handler, string $method = \'email\')', 'Builds the email-only body with the handler\'s email() method, or the protected method named, and leaves the SMS body alone. A handler with no email() method keeps the shared body.'],
@@ -185,7 +193,7 @@
             ['scope_type, scope_id, client_type, client_id', 'As for an SMS.'],
             ['address, name', 'The recipient\'s email and name.'],
             ['subject', 'The argument of toEmail().'],
-            ['from, reply_to, logo, organization_name', 'What the message set, or null so the gateway fills the configured value.'],
+            ['from, reply_to, logo, organization_name', 'What the message set, else what the scope answers (organization_name always has a value). A missing from or logo makes toEmail() throw, and a null reply_to means replies go to the sender.'],
             ['header, salutation, footer', 'Trimmed, and null when not set. The salutation is Dear {name},.'],
             ['body', 'The email body, else the shared body. The driver turns it into the lines the template shows.'],
             ['options', 'What emailOptions() set.'],
@@ -207,6 +215,7 @@
     <x-docs::section id="other" title="The other classes">
         <x-docs::table :columns="['Class', 'What it does']" :rows="[
             ['MessageProcessed', 'The event. new MessageProcessed($payload, $tags) or MessageProcessed::dispatch($payload, $tags); the payload is keyed by channel and the tags are added to the queued jobs.'],
+            ['MessageIdentity', 'What a scope\'s messageIdentity() returns: the optional, named organizationName, header, footer, senderId, logo, emailFrom and emailReplyTo. It checks itself, so a blank organization name, a logo that is not a URL or an address that is not an email throws an InvalidArgumentException.'],
             ['SendMessageNotifications', 'The listener. Sends each channel\'s messages to its gateway unless the channel is switched off, globally or for the scope.'],
             ['SendMessageJob', 'Sends one request through the gateway\'s driver. Rate limited, and fails for good after 3 failed requests (waiting about 60, then 90 seconds), logging Message sending failed.'],
             ['Gateways\\Gateway, Gateways\\SmsGateway, Gateways\\EmailGateway', 'See Gateways.'],

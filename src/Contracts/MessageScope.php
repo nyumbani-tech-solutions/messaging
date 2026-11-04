@@ -3,6 +3,7 @@
 namespace Nyumbani\Messaging\Contracts;
 
 use Nyumbani\Messaging\Enums\MessageChannel;
+use Nyumbani\Messaging\MessageIdentity;
 
 interface MessageScope
 {
@@ -14,23 +15,9 @@ interface MessageScope
     public function isMessageChannelEnabled(MessageChannel $channel): bool;
 
     /**
-     * Get the line every message of this model starts with, or null for none
+     * Get who the messages of this model are from: its organization name, header, footer, SMS sender, and the logo and sender of its emails
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function messageHeader(): ?string;
-
-    /**
-     * Get the line every message of this model ends with, or null for none
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    public function messageFooter(): ?string;
-
-    /**
-     * Get the sender ID every message of this model is sent from, or null for the default
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    public function messageSenderId(): ?string;
+    public function messageIdentity(): MessageIdentity;
 }

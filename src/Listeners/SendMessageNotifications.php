@@ -5,6 +5,7 @@ namespace Nyumbani\Messaging\Listeners;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
+use LogicException;
 use Nyumbani\Messaging\Contracts\MessageScope;
 use Nyumbani\Messaging\Enums\MessageChannel;
 use Nyumbani\Messaging\Events\MessageProcessed;
@@ -32,17 +33,36 @@ class SendMessageNotifications
      */
     public function handle(MessageProcessed $event): void
     {
+        //  Refuse the whole event before any channel is queued when a message has no scope
+        $this->assertScoped($event->payload);
+
         //  Send each channel's messages through its gateway
         foreach (MessageChannel::cases() as $channel) {
             //  Get the payload
             $payload = $event->payload[$channel->value] ?? [];
 
-            //  Keep the messages whose channel is on
-            $messages = $this->deliverable($channel, $payload);
+            //  Keep the messages whose channel is on, unless send() or sendTo() already checked them against their scope
+            $messages = $event->isGated ? $payload : $this->deliverable($channel, $payload);
 
             //  Send them
             if (count($messages) > 0) {
                 $this->gateway($channel)->send($messages, $event->tags);
+            }
+        }
+    }
+
+    /**
+     * Throw when any message of any channel has no scope, so that nothing is half sent
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function assertScoped(array $payload): void
+    {
+        foreach (MessageChannel::cases() as $channel) {
+            foreach ($payload[$channel->value] ?? [] as $message) {
+                if (blank($message['scope_type'] ?? null) || blank($message['scope_id'] ?? null)) {
+                    throw new LogicException("A {$channel->value} message has no scope: every message needs a scope_type and a scope_id, which Message::scope() or Messenger::for() sets.");
+                }
             }
         }
     }
@@ -68,7 +88,7 @@ class SendMessageNotifications
     protected function deliverable(MessageChannel $channel, array $messages): array
     {
         //  Send nothing when the channel is off globally, before any query
-        if (! Messenger::global()->isEnabled($channel)) {
+        if (! config($channel->enabledConfigKey())) {
             return [];
         }
 
@@ -83,17 +103,17 @@ class SendMessageNotifications
     }
 
     /**
-     * Determine whether the channel is on for the scope, or globally when the message has no scope that controls its channels
+     * Determine whether the channel is on for the scope, which is false when the scope cannot be found
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    protected function isDeliverable(MessageChannel $channel, ?Model $scope): bool
+    protected function isDeliverable(MessageChannel $channel, (Model&MessageScope)|null $scope): bool
     {
-        return ($scope ? Messenger::for($scope) : Messenger::global())->isEnabled($channel);
+        return $scope !== null && Messenger::for($scope)->isEnabled($channel);
     }
 
     /**
-     * Load the scope models that control their channels, one query per type, keyed by type and key
+     * Load the scope models, one query per type, keyed by type and key
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -106,9 +126,9 @@ class SendMessageNotifications
                 //  Get the model class of the scope type
                 $class = Relation::getMorphedModel($type) ?? $type;
 
-                //  Skip scopes that do not control their channels
+                //  Refuse a scope that cannot control the channels, which is a mistake and not a missing record
                 if (! is_subclass_of($class, MessageScope::class)) {
-                    return collect();
+                    throw new LogicException("The scope type {$type} is not a model that implements MessageScope.");
                 }
 
                 //  Load the scopes in one query

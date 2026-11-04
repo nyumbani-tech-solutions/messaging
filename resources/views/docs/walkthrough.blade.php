@@ -51,11 +51,11 @@
                 }
             }
         </x-docs::code>
-        <p><code>category()</code> is the label Nyumbani Connect files the SMS under, so every invoice message is reported together. See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for the rules.</p>
+        <p><code>category()</code> is the label Nyumbani Connect files the SMS under, so every invoice message is reported together. See <a href="{{ $docs->url('handlers') }}" class="text-primary underline">Message handlers</a> for the rules.</p>
     </x-docs::section>
 
     <x-docs::section id="send" title="4. Send one message to every recipient">
-        <p>The invoice has two tenants. A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a> scoped to the invoice's property gets the header, footer and sender from it once. <code>sendTo()</code> then sends a copy to each tenant, with the salutation addressed to that tenant, in one event.</p>
+        <p>The invoice has two tenants. A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">The channel switches</a> scoped to the invoice's property gets the header, footer and sender from it once. <code>sendTo()</code> then sends a copy to each tenant, with the salutation addressed to that tenant, in one event.</p>
         <x-docs::code title="app/Http/Controllers/InvoiceController.php">
             use App\Models\Invoice;
             use App\Models\Tenant;
@@ -89,7 +89,7 @@
     </x-docs::section>
 
     <x-docs::section id="item" title="5. What the payload item holds">
-        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>; <code>property</code> and <code>tenant</code> are the names in your app's morph map, which is why <code>scope_type</code> and <code>client_type</code> are not class names. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> <code>Thank you</code> from <code>messageFooter()</code> and the sender <code>ACME</code> from <code>messageSenderId()</code>.</p>
+        <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>; <code>property</code> and <code>tenant</code> are the names in your app's morph map, which is why <code>scope_type</code> and <code>client_type</code> are not class names. The <code>Property</code> model implements <code>MessageScope</code>: its <code>messageIdentity()</code> gives the header <code>ACME HOMES</code>, the footer <code>Thank you</code> and the sender <code>ACME</code>.</p>
         <x-docs::code lang="json" title="First payload item">
             {
                 "scope_type": "property",
@@ -169,5 +169,13 @@
 
     <x-docs::section id="deliver" title="8. Delivery">
         <p>The job posts the request, at once on the sync queue or from a worker otherwise. Any successful answer from Connect ends the job and Connect takes over delivery. Any error answer, or no answer, throws. On a real queue the job is tried again after about 60 seconds, then about 90, and after the third failure <code>Message sending failed</code> is logged and the job lands in the failed jobs table. Watch the jobs in Horizon, or with <code>php artisan queue:failed</code>.</p>
+    </x-docs::section>
+
+    <x-docs::section id="next" title="Where to go next">
+        <ul class="ml-5 list-disc space-y-1">
+            <li><a href="{{ $docs->url('scopes') }}" class="text-primary underline">Scopes and identity</a>: what the property did for the header, footer and sender.</li>
+            <li><a href="{{ $docs->url('sending') }}" class="text-primary underline">Sending</a>: <code>send()</code>, <code>sendTo()</code> and the channels.</li>
+            <li><a href="{{ $docs->url('testing-and-troubleshooting') }}" class="text-primary underline">Testing and troubleshooting</a>: prove it works without sending a real SMS.</li>
+        </ul>
     </x-docs::section>
 @endsection

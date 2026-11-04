@@ -9,21 +9,16 @@ use Nyumbani\Messaging\Enums\MessageChannel;
 class Messenger
 {
     /**
-     * The scope's header, footer and sender ID, worked out once, and null until then
-     */
-    protected ?array $frame = null;
-
-    /**
-     * Create the messenger for a scope that controls its channels, or for the global switches alone
+     * Create the messenger for the scope that owns the messages and controls their channels
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     public function __construct(
-        protected (Model&MessageScope)|null $scope = null
+        protected Model&MessageScope $scope,
     ) {}
 
     /**
-     * Return the messenger for a scope, which must be given and must control its channels
+     * Return the messenger for a scope, which every message needs and which controls its channels
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -33,39 +28,17 @@ class Messenger
     }
 
     /**
-     * Return the messenger for the global switches alone, when there is no scope
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    public static function global(): static
-    {
-        return new static;
-    }
-
-    /**
-     * Start a message with no recipient yet, scoped to the messenger's scope and framed by its header, footer and sender ID, ready for sendTo()
+     * Start a message with no recipient yet, scoped to the messenger's scope, which supplies its header, footer, sender and email identity, ready for sendTo()
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     public function message(): Message
     {
-        //  Work out the header, footer and sender ID once, for all the recipients
-        [$header, $footer, $senderId] = $this->frame ??= [
-            $this->scope?->messageHeader(),
-            $this->scope?->messageFooter(),
-            $this->scope?->messageSenderId(),
-        ];
-
-        //  Return the message
-        return Message::make()
-            ->scope($this->scope)
-            ->header($header)
-            ->footer($footer)
-            ->when(filled($senderId), fn (Message $message) => $message->senderId($senderId));
+        return Message::make()->scope($this->scope);
     }
 
     /**
-     * Start a message to a recipient, scoped to the messenger's scope and framed by the scope's header, footer and sender ID
+     * Start a message to a recipient, scoped to the messenger's scope, which supplies its header, footer, sender and email identity
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -75,7 +48,7 @@ class Messenger
     }
 
     /**
-     * Determine whether a channel is on globally and, when the scope controls its channels, for the scope too
+     * Determine whether a channel is on globally and for the scope too
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -87,7 +60,7 @@ class Messenger
         }
 
         //  The scope has the final say
-        return $this->scope?->isMessageChannelEnabled($channel) ?? true;
+        return $this->scope->isMessageChannelEnabled($channel);
     }
 
     /**

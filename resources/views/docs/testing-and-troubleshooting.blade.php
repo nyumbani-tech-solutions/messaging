@@ -13,7 +13,7 @@
     </x-docs::section>
 
     <x-docs::section id="wording" title="1. The wording">
-        <p>Build the message and read the text. This is the test most handlers need. See <a href="{{ $docs->url('sending-with-handlers') }}#test" class="text-primary underline">Test a handler</a>.</p>
+        <p>Build the message and read the text. This is the test most handlers need. See <a href="{{ $docs->url('handlers') }}#test" class="text-primary underline">Test a handler</a>.</p>
     </x-docs::section>
 
     <x-docs::section id="queued" title="2. The message is queued">
@@ -30,6 +30,7 @@
                 $user = User::factory()->create(['phone_number' => '0712 345 678']);
 
                 message()
+                    ->scope($project)
                     ->recipient($user)
                     ->handler(new CheckInOtpMessageHandler('1234'))
                     ->senderId('ACME')
@@ -97,7 +98,6 @@
             beforeEach(function () {
                 config([
                     'messaging.email.enabled' => true,
-                    'messaging.email.from' => ['address' => 'noreply@acme.test', 'name' => 'Acme'],
                     'messaging.email.zeptomail.uri' => 'https://zepto.test/send',
                     'messaging.email.zeptomail.api_token' => 'abc123',
                     'messaging.email.zeptomail.template_key' => 'tpl-default',
@@ -107,7 +107,7 @@
             it('queues the email', function () {
                 Queue::fake();
 
-                message()->recipient($user)->salutation()->text('Hi.')->subject('Hello')->via('email')->send('invoice');
+                message()->scope($project)->recipient($user)->salutation()->text('Hi.')->subject('Hello')->via('email')->send('invoice');
 
                 Queue::assertPushed(SendMessageJob::class, fn (SendMessageJob $job) => $job->payload['template_key'] === 'tpl-default'
                     && $job->payload['to'][0]['email_address']['address'] === $user->email);
@@ -132,10 +132,10 @@
             ['Was a job queued?', 'Check the jobs table, or Horizon, for SendMessageJob.', 'No job means the message never left the listener: see the two checks above.'],
             ['Did the job fail?', 'php artisan queue:failed, and the log for Message sending failed.', 'The error shows Connect\'s answer. A 401 is a wrong NYUMBANI_CONNECT_TOKEN; a connection error is a wrong NYUMBANI_CONNECT_BASE_URL.'],
             ['Is it only slow?', 'Many requests at once wait for the rate limit.', 'Raise messaging.rate_limit_per_second, or wait: nothing is lost.'],
-            ['Wrong sender?', 'The senderId() or toSMS() argument, then the scope, then the config default.', 'Call senderId() on the message, set messageSenderId() on the scope or set MESSAGING_SMS_SENDER_ID. With none of them toSMS() throws.'],
+            ['Wrong sender?', 'senderId() on the message, then the scope, then the config default.', 'Call senderId() on the message, set senderId in the scope\'s messageIdentity() or set MESSAGING_SMS_SENDER_ID. With none of them toSMS() throws.'],
             ['Is email switched off?', 'config(\'messaging.email.enabled\') and the scope\'s isMessageChannelEnabled().', 'Set MESSAGING_EMAIL_ENABLED=true. Email is off by default, and a switched-off message is dropped without any error.'],
             ['Was the email dropped for its address?', 'The address must pass a normal email check.', 'Store a valid email. An invalid one is dropped silently.'],
-            ['Did sending an email throw?', 'A LogicException says what is missing.', 'Call subject() (every email needs one), set messaging.email.from.address (or call from()), and ZEPTOMAIL_TEMPLATE_KEY (or emailOptions()).'],
+            ['Did sending an email throw?', 'A LogicException says what is missing.', 'Call subject() (every email needs one), make sure the scope\'s messageIdentity() sets emailFrom and logo (or call from() and logo()), and set ZEPTOMAIL_TEMPLATE_KEY (or emailOptions()).'],
             ['Did ZeptoMail refuse it?', 'php artisan queue:failed and the log for Message sending failed.', 'The error shows ZeptoMail\'s answer. A 401 is a wrong ZEPTOMAIL_API_TOKEN; a sender from an unverified domain is refused.'],
         ]" />
         <x-docs::callout type="tip" title="Read the exact request">

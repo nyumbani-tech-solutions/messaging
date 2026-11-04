@@ -1,16 +1,24 @@
 @extends('docs::layout')
 
-@section('page', 'Sending SMS without handlers')
-@section('lead', 'Write the text straight on the message, for a quick one-off.')
+@section('page', 'Writing a message')
+@section('lead', 'Write the text on the message: salutation, body, links, conditions, header and footer. For a message type you send again and again, use a handler.')
 
 @section('content')
-    <x-docs::section id="when" title="When to skip the handler">
-        <p>A handler is not required. The body methods of <code>Message</code> work on their own, so a short message can be written where it is sent. Use this for a one-off, such as a console command or a script. A message type your app sends again and again belongs in a <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">handler</a>, which keeps its wording in one place and is easy to test. The shipped Nyumbani rule asks apps to use handlers for their message types.</p>
+    <x-docs::section id="parts" title="The parts of a message">
+        <p>The text of an SMS has up to four parts, in this order. The header and footer come from the <a href="{{ $docs->url('scopes') }}" class="text-primary underline">scope</a> unless the message sets its own; the salutation and the body are yours.</p>
+        <x-docs::table :columns="['Part', 'Where it comes from', 'Left out when']" :rows="[
+            ['Header', 'The scope, or header() on the message', 'Neither has one, or withoutHeader()'],
+            ['Salutation', 'salutation(): Dear {the recipient\'s name},', 'You do not call salutation()'],
+            ['Body', 'text(), newLine(), action(), prepend(), append(), when(), or a handler', 'Never: it is the message'],
+            ['Footer', 'The scope, or footer() on the message', 'Neither has one, or withoutFooter()'],
+        ]" />
+        <p>You can write the body straight on the message, as below, or move it into a <a href="{{ $docs->url('handlers') }}" class="text-primary underline">handler</a>. Use a handler once the same message is sent from more than one place: it keeps the wording in one class and is easy to test. Inline text suits a one-off, such as a console command or a script. The shipped body methods are the same either way.</p>
     </x-docs::section>
 
     <x-docs::section id="send" title="Build and send">
         <x-docs::code title="Anywhere in the app">
             message()
+                ->scope($project)
                 ->recipient($user)
                 ->salutation()
                 ->text("Your code is {$code}.")->newLine()
@@ -33,6 +41,7 @@
             $isOverdue = true;
 
             $message = message()
+                ->scope($project)
                 ->recipient($user)
                 ->header('ACME HOMES')
                 ->salutation()

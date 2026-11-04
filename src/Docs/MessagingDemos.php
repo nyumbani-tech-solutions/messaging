@@ -2,11 +2,7 @@
 
 namespace Nyumbani\Messaging\Docs;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
-use Nyumbani\Messaging\Contracts\MessageScope;
-use Nyumbani\Messaging\Enums\MessageChannel;
-use Nyumbani\Messaging\Events\MessageProcessed;
 use Nyumbani\Messaging\Gateways\SmsGateway;
 use Nyumbani\Messaging\Message;
 use Nyumbani\Messaging\Messenger;
@@ -68,9 +64,9 @@ class MessagingDemos
             return [$this->row('text', $item['text']), $this->row('Sent', 'No: the number has fewer than nine digits', false)];
         }
 
-        //  Through the queue, exactly as an app sends it
+        //  Through the queue, the way the package queues every message
         if (($input['mode'] ?? 'now') === 'queue') {
-            MessageProcessed::dispatch(['sms' => [$item]], ['docs']);
+            $gateway->send([$item], ['docs']);
 
             return [
                 $this->row('text', $item['text']),
@@ -108,9 +104,10 @@ class MessagingDemos
 
         //  Build the message the way an app would
         $message = Message::make()
+            ->scope(new DemoScope(senderId: null))
             ->recipient($recipient)
-            ->header(filled($input['header'] ?? null) ? $input['header'] : null)
-            ->footer(filled($input['footer'] ?? null) ? $input['footer'] : null)
+            ->when(filled($input['header'] ?? null), fn (Message $message) => $message->header($input['header']), fn (Message $message) => $message->withoutHeader())
+            ->when(filled($input['footer'] ?? null), fn (Message $message) => $message->footer($input['footer']), fn (Message $message) => $message->withoutFooter())
             ->text($input['body'] ?? '');
 
         //  Open with the recipient's name when asked
@@ -118,14 +115,17 @@ class MessagingDemos
             $message->salutation();
         }
 
-        //  Turn it into the payload item, then into what the gateway sends
-        $item = $message->toSMS(filled($input['sender'] ?? null) ? $input['sender'] : null);
+        //  Send from the sender typed, else the default
+        if (filled($input['sender'] ?? null)) {
+            $message->senderId($input['sender']);
+        }
 
-        return $message->toSMS(filled($input['sender'] ?? null) ? $input['sender'] : null);
+        //  Turn it into the payload item
+        return $message->toSMS();
     }
 
     /**
-     * Show whether a scope and the global switch let SMS out, and the frame the scope puts around every message
+     * Show whether a scope and the global switch let SMS out
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -133,40 +133,14 @@ class MessagingDemos
     {
         //  Make up a project whose SMS switch is the typed one
         $isOn = ($input['scope'] ?? 'on') === 'on';
-        $project = new class($isOn) extends Model implements MessageScope
-        {
-            public function __construct(protected bool $isOn = true)
-            {
-                parent::__construct();
-            }
-
-            public function isMessageChannelEnabled(MessageChannel $channel): bool
-            {
-                return $this->isOn;
-            }
-
-            public function messageHeader(): ?string
-            {
-                return 'ACME HOMES';
-            }
-
-            public function messageFooter(): ?string
-            {
-                return 'Thank you';
-            }
-
-            public function messageSenderId(): ?string
-            {
-                return 'ACME';
-            }
-        };
+        $project = new DemoScope($isOn);
 
         //  Set the global switch for this check only
         $original = config('messaging.connect.sms.enabled');
         config(['messaging.connect.sms.enabled' => ($input['global'] ?? 'on') === 'on']);
 
         try {
-            $messenger = ($input['scope'] ?? 'on') === 'none' ? Messenger::global() : Messenger::for($project);
+            $messenger = Messenger::for($project);
             $enabled = $messenger->smsEnabled();
             $canSend = $messenger->canSend();
         } finally {
@@ -178,7 +152,6 @@ class MessagingDemos
             $this->row('canSend()', $canSend ? 'true' : 'false', $canSend),
             $this->row('Why', match (true) {
                 ($input['global'] ?? 'on') !== 'on' => 'The global switch is off, which wins over any scope.',
-                ($input['scope'] ?? 'on') === 'none' => 'No scope, so only the global switch counts.',
                 ! $isOn => 'The scope has SMS off, so its messages are dropped.',
                 default => 'Both the global switch and the scope are on.',
             }),

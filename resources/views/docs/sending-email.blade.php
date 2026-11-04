@@ -13,6 +13,7 @@
         <p>After setting the ZeptoMail settings in <a href="{{ $docs->url('installation') }}" class="text-primary underline">Installation</a>, this is a complete send. The recipient is a model with an <code>email</code> and a <code>name</code>:</p>
         <x-docs::code>
             message()
+                ->scope($project)
                 ->recipient($user)                       // a model with email and name
                 ->salutation()                           // "Dear Jane,"
                 ->text('Your rent is due on Friday.')
@@ -20,13 +21,14 @@
                 ->via('email')                           // email only
                 ->send('rent');
         </x-docs::code>
-        <p>The sender, reply-to, logo and organization name come from <code>messaging.email</code>. A message with a <code>subject()</code> goes out by SMS and email unless <code>via()</code> chooses the channels: <code>via('email')</code> is email only and <code>via(['sms', 'email'])</code> is both. An email without a subject throws a <code>LogicException</code>. Each channel is switched on or off on its own.</p>
+        <p>The organization name, sender, reply-to and logo come from the message\'s scope (a null sender, reply-to or logo falls back to <code>messaging.email</code>). A message with a <code>subject()</code> goes out by SMS and email unless <code>via()</code> chooses the channels: <code>via('email')</code> is email only and <code>via(['sms', 'email'])</code> is both. An email without a subject throws a <code>LogicException</code>. Each channel is switched on or off on its own.</p>
     </x-docs::section>
 
     <x-docs::section id="branding" title="Branding each message">
         <p>Branding belongs to the message, so emails for different organisations can go out in one <code>sendTo()</code> or dispatch without taking each other's sender or logo. Whatever a message does not set is filled from the config.</p>
         <x-docs::code>
             message()
+                ->scope($project)
                 ->recipient($tenant)
                 ->from('billing@acme.example', 'Acme Homes')
                 ->replyTo('help@acme.example')
@@ -51,6 +53,7 @@
         <p>The template named by <code>ZEPTOMAIL_TEMPLATE_KEY</code> is used for every email. A message can use another one with <code>emailOptions()</code>:</p>
         <x-docs::code>
             message()
+                ->scope($project)
                 ->recipient($tenant)
                 ->emailOptions(['template_key' => '2d6f.1c1637.k1.example'])
                 ->text('Hello.')
@@ -91,6 +94,7 @@
             $handler = new RentDueMessageHandler;
 
             message()
+                ->scope($project)
                 ->recipient($tenant)
                 ->handler($handler)         // the SMS body
                 ->emailHandler($handler)    // the email body
@@ -103,7 +107,7 @@
         <x-docs::table :columns="['Situation', 'What happens']" :rows="[
             ['The address is not a valid email', 'The message is dropped silently.'],
             ['Email is switched off, globally or for the scope', 'The message is dropped without any error.'],
-            ['No sender in the message or in messaging.email.from', 'A LogicException is thrown when the event is dispatched.'],
+            ['No sender or logo on the message or its scope', 'toEmail() throws a LogicException, so the mistake shows up even where email is switched off.'],
             ['No template key in the message or the config', 'A LogicException is thrown when the event is dispatched.'],
             ['ZeptoMail refuses the request', 'The job throws, the queue retries it up to three times, then logs Message sending failed.'],
         ]" />

@@ -32,11 +32,19 @@ class EmailGateway extends Gateway
             return null;
         }
 
-        //  Get the sender, which every email needs
-        $from = $this->party($message['from'] ?? null, config('messaging.email.from'));
+        //  Get the sender, logo and organization name, which every email needs and a message gets from itself or its scope
+        $from = $this->party($message['from'] ?? null);
 
         if (blank($from['address'])) {
-            throw new LogicException('An email needs a sender: call from() on the message or set messaging.email.from.address.');
+            throw new LogicException('An email needs a sender: call from() on the message or set emailFrom in the scope\'s messageIdentity().');
+        }
+
+        if (blank($message['logo'] ?? null)) {
+            throw new LogicException('An email needs a logo: call logo() on the message or set logo in the scope\'s messageIdentity().');
+        }
+
+        if (blank($message['organization_name'] ?? null)) {
+            throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
         }
 
         //  Return the message with its sender and branding filled
@@ -44,31 +52,24 @@ class EmailGateway extends Gateway
             'address' => $address,
             'name' => trim((string) ($message['name'] ?? '')),
             'from' => $from,
-            'reply_to' => $this->party($message['reply_to'] ?? null, config('messaging.email.reply_to'), $from),
-            'logo' => ($message['logo'] ?? null) ?: config('messaging.email.logo'),
-            'organization_name' => ($message['organization_name'] ?? null) ?: config('messaging.email.organization_name') ?: config('app.name'),
+            'reply_to' => $this->party($message['reply_to'] ?? null, $from),
         ]);
     }
 
     /**
-     * Resolve an address and name from the message, then the config, then the fallback
+     * Resolve an address and name from the message, then the fallback, using the app name when no name is set
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    protected function party(?array $given, ?array $default, ?array $fallback = null): array
+    protected function party(?array $given, ?array $fallback = null): array
     {
-        //  Use the message's own address when it has one
-        $party = filled($given['address'] ?? null) ? $given : $default;
-
-        //  Use the fallback when there is still no address
-        if (blank($party['address'] ?? null)) {
-            $party = $fallback ?? ['address' => null];
-        }
+        //  Use the message's own address when it has one, else the fallback
+        $party = filled($given['address'] ?? null) ? $given : ($fallback ?? ['address' => null]);
 
         //  Return the address with a name, which is the app name when none is set
         return [
             'address' => $party['address'],
-            'name' => ($party['name'] ?? null) ?: ($default['name'] ?? null) ?: config('app.name'),
+            'name' => ($party['name'] ?? null) ?: config('app.name'),
         ];
     }
 }

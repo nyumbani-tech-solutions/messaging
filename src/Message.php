@@ -12,7 +12,7 @@ use Nyumbani\Messaging\Events\MessageProcessed;
 class Message
 {
     /**
-     * The header line shown above the salutation
+     * The header line shown above the salutation, null to take the scope's, or an empty string for none
      */
     protected ?string $header = null;
 
@@ -27,7 +27,7 @@ class Message
     protected ?string $body = null;
 
     /**
-     * The footer line shown below the body
+     * The footer line shown below the body, null to take the scope's, or an empty string for none
      */
     protected ?string $footer = null;
 
@@ -121,7 +121,7 @@ class Message
     }
 
     /**
-     * Set the header
+     * Set the header, which beats the scope's. Null clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -132,6 +132,16 @@ class Message
 
         //  Return the message
         return $this;
+    }
+
+    /**
+     * Send the message with no header, even when the scope has one
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function withoutHeader(): static
+    {
+        return $this->header('');
     }
 
     /**
@@ -149,7 +159,7 @@ class Message
     }
 
     /**
-     * Set the footer
+     * Set the footer, which beats the scope's. Null clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -163,11 +173,21 @@ class Message
     }
 
     /**
-     * Set the sender ID the message is sent from
+     * Send the message with no footer, even when the scope has one
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function senderId(string $senderId): static
+    public function withoutFooter(): static
+    {
+        return $this->footer('');
+    }
+
+    /**
+     * Set the sender ID the message is sent from. Null clears it, so the scope's applies again
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function senderId(?string $senderId): static
     {
         //  Set the sender ID
         $this->senderId = $senderId;
@@ -177,11 +197,11 @@ class Message
     }
 
     /**
-     * Set the model that owns the message, which controls its message channels
+     * Set the model that owns the message, which controls its message channels and defines who it is from. Every message needs one
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function scope((Model&MessageScope)|null $scope): static
+    public function scope(Model&MessageScope $scope): static
     {
         //  Set the scope
         $this->scope = $scope;
@@ -224,35 +244,35 @@ class Message
     }
 
     /**
-     * Set the address and name the email is sent from
+     * Set the address and name the email is sent from. A null address clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function from(string $address, ?string $name = null): static
+    public function from(?string $address, ?string $name = null): static
     {
-        //  Set the sender
-        $this->from = ['address' => $address, 'name' => $name];
+        //  Set the sender, where no address clears it so the scope's applies again
+        $this->from = filled($address) ? ['address' => $address, 'name' => $name] : null;
 
         //  Return the message
         return $this;
     }
 
     /**
-     * Set the address and name replies to the email go to
+     * Set the address and name replies to the email go to. A null address clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function replyTo(string $address, ?string $name = null): static
+    public function replyTo(?string $address, ?string $name = null): static
     {
-        //  Set the reply-to
-        $this->replyTo = ['address' => $address, 'name' => $name];
+        //  Set the reply-to, where no address clears it so the scope's applies again
+        $this->replyTo = filled($address) ? ['address' => $address, 'name' => $name] : null;
 
         //  Return the message
         return $this;
     }
 
     /**
-     * Set the logo shown in the email
+     * Set the logo shown in the email. Null clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -266,7 +286,7 @@ class Message
     }
 
     /**
-     * Set the organization name shown in the email
+     * Set the organization name shown in the email. Null clears it, so the scope's applies again
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -501,26 +521,32 @@ class Message
     }
 
     /**
-     * Get the SMS payload item for the recipient, from the sender given, the message's sender or the configured default, throwing when there is none
+     * Get the SMS payload item for the recipient, from the message's sender, the scope's or the configured default, throwing when there is none
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function toSMS(?string $senderId = null): array
+    public function toSMS(): array
     {
         //  Get the recipient
         $recipient = $this->requireRecipient('toSMS()');
 
+        //  Get the scope
+        $scope = $this->requireScope('toSMS()');
+
+        //  Declare the identity
+        $identity = $scope->messageIdentity();
+
         //  Separate the header
-        $header = $this->header ? "{$this->header}\n\n" : '';
+        $header = ($line = $this->header ?? $identity->header) ? "{$line}\n\n" : '';
 
         //  Separate the footer
-        $footer = $this->footer ? "\n\n{$this->footer}" : '';
+        $footer = ($line = $this->footer ?? $identity->footer) ? "\n\n{$line}" : '';
 
         //  Get the text
         $text = "{$header}{$this->greeting($recipient)}{$this->body}{$footer}";
 
         //  Get the sender ID, which every SMS needs
-        $senderId = ($senderId ?? $this->senderId) ?: config('messaging.connect.sms.sender_id');
+        $senderId = ($this->senderId ?? $identity->senderId) ?: config('messaging.connect.sms.sender_id');
 
         //  Throw when there is no sender ID
         if (blank($senderId)) {
@@ -529,8 +555,8 @@ class Message
 
         //  Return the payload item
         return [
-            'scope_type' => $this->scope?->getMorphClass(),
-            'scope_id' => $this->scope?->getKey(),
+            'scope_type' => $scope->getMorphClass(),
+            'scope_id' => $scope->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
             'category' => $this->category,
@@ -542,7 +568,7 @@ class Message
     }
 
     /**
-     * Get the email payload item for the recipient, who must have an email and a name, with the subject given or the message's own
+     * Get the email payload item for the recipient, who must have an email and a name, with the subject given or the message's own, and a sender and logo from the message or its scope
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -551,26 +577,53 @@ class Message
         //  Get the recipient
         $recipient = $this->requireRecipient('toEmail()');
 
+        //  Get the scope, with the identity it gives the message
+        $scope = $this->requireScope('toEmail()');
+
+        //  Declare the identity
+        $identity = $scope->messageIdentity();
+
         //  Get the subject, which every email needs
         $subject ??= $this->subject ?? throw new LogicException('An email needs a subject: call subject() first.');
 
+        //  Get the sender, which every email needs
+        $from = $this->from ?? $identity->emailFrom ?? throw new LogicException('An email needs a sender: call from() on the message or set emailFrom in the scope\'s messageIdentity().');
+
+        //  Get the logo, which every email needs
+        $logo = $this->logo ?? $identity->logo ?? throw new LogicException('An email needs a logo: call logo() on the message or set logo in the scope\'s messageIdentity().');
+
+        //  Get where replies go, which is the sender when none is set
+        $replyTo = $this->replyTo ?? $identity->emailReplyTo;
+
+        //  Get the organization name, which every email needs
+        $organizationName = $this->organizationName ?? $identity->organizationName ?? throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
+
+        //  Get the header
+        $header = ($line = $this->header ?? $identity->header) ? trim($line) : null;
+
+        //  Get the salutation
+        $salutation = ($line = $this->greeting($recipient)) ? trim($line) : null;
+
+        //  Get the footer
+        $footer = ($line = $this->footer ?? $identity->footer) ? trim($line) : null;
+
         //  Return the payload item
         return [
-            'scope_type' => $this->scope?->getMorphClass(),
-            'scope_id' => $this->scope?->getKey(),
+            'scope_type' => $scope->getMorphClass(),
+            'scope_id' => $scope->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
             'address' => $recipient->email,
             'name' => (string) $recipient->name,
             'subject' => $subject,
-            'from' => $this->from,
-            'reply_to' => $this->replyTo,
-            'logo' => $this->logo,
-            'organization_name' => $this->organizationName,
-            'header' => $this->header ? trim($this->header) : null,
-            'salutation' => ($greeting = $this->greeting($recipient)) ? trim($greeting) : null,
+            'from' => $from,
+            'reply_to' => $replyTo,
+            'logo' => $logo,
+            'organization_name' => $organizationName,
+            'header' => $header,
+            'salutation' => $salutation,
             'body' => $this->emailBody ?? $this->body,
-            'footer' => $this->footer ? trim($this->footer) : null,
+            'footer' => $footer,
             'options' => $this->emailOptions,
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
         ];
@@ -599,6 +652,9 @@ class Message
      */
     public function sendTo(iterable $recipients, array|string $tags = [], ?callable $each = null): static
     {
+        //  Refuse before anything is built when the message has no scope
+        $this->requireScope('sendTo()');
+
         //  Build the callback
         $callback = function (Model $recipient) use ($each) {
             //  Copy the shared message for the recipient
@@ -620,30 +676,46 @@ class Message
     }
 
     /**
-     * Dispatch the event the app chose, which is MessageProcessed by default, with the messages of each channel
+     * Dispatch the event the app chose, which is MessageProcessed by default, with the messages of each channel the message's scope has on
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
     protected function dispatch(array $messages, array|string $tags): void
     {
-        //  Build the payload, keyed by channel
+        //  Build the payload, keyed by channel, from the channels each message's scope has on
         $payload = [];
 
-        //  Build the payload
+        //  Ask each scope once per channel, since the copies of one message share their scope
+        $isOn = [];
+
         foreach ($messages as $message) {
             foreach ($message->resolveChannels() as $channel) {
-                $payload[$channel->value][] = match ($channel) {
+                //  Build the item first, so a mistake such as a missing subject throws whether or not the channel is on
+                $item = match ($channel) {
                     MessageChannel::SMS => $message->toSMS(),
                     MessageChannel::EMAIL => $message->toEmail(),
                 };
+
+                //  Leave out the channel when the scope or the global switch has it off
+                $scope = $message->requireScope('send()');
+
+                $isOn[spl_object_id($scope)][$channel->value] ??= Messenger::for($scope)->isEnabled($channel);
+
+                if ($isOn[spl_object_id($scope)][$channel->value]) {
+                    $payload[$channel->value][] = $item;
+                }
             }
         }
 
-        //  Dispatch the event
+        //  Nothing is on, so there is nothing to send
+        if ($payload === []) {
+            return;
+        }
+
+        //  Dispatch the event, marked as checked so the listener does not load the scopes again
         $event = config('messaging.event', MessageProcessed::class);
 
-        //  Dispatch the event
-        $event::dispatch($payload, (array) $tags);
+        $event::dispatch($payload, (array) $tags, true);
     }
 
     /**
@@ -669,6 +741,17 @@ class Message
         return $this->salutation && filled($recipient->name)
             ? "Dear {$recipient->name}, "
             : '';
+    }
+
+    /**
+     * Get the scope, or throw when none was set
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function requireScope(string $method): Model&MessageScope
+    {
+        return $this->scope
+            ?? throw new LogicException("{$method} needs a scope: call scope() first, or start the message with Messenger::for(\$scope).");
     }
 
     /**

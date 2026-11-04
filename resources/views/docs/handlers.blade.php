@@ -1,11 +1,11 @@
 @extends('docs::layout')
 
-@section('page', 'Sending SMS with handlers')
-@section('lead', 'Write a handler for the message type, build the message and dispatch it.')
+@section('page', 'Message handlers')
+@section('lead', 'Keep the wording of one kind of message in one class, with variants and a test.')
 
 @section('content')
     <x-docs::section id="what" title="What a handler is">
-        <p>A handler owns the wording of one kind of message, such as a check-in code or an invoice reminder. Keeping it in its own class means the text lives in one place instead of being assembled in controllers, models or jobs. The handler writes only the body; the <code>Message</code> adds the header, salutation and footer around it. To write the text inline instead, see <a href="{{ $docs->url('sending-without-handlers') }}" class="text-primary underline">Sending SMS without handlers</a>.</p>
+        <p>A handler owns the wording of one kind of message, such as a check-in code or an invoice reminder. Keeping it in its own class means the text lives in one place instead of being assembled in controllers, models or jobs. The handler writes only the body; the <code>Message</code> adds the header, salutation and footer around it. To write the text inline instead, see <a href="{{ $docs->url('writing-messages') }}" class="text-primary underline">Writing a message</a>.</p>
     </x-docs::section>
 
     <x-docs::section id="write" title="1. Write a handler">
@@ -36,6 +36,7 @@
             use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
 
             message()
+                ->scope($project)
                 ->recipient($user)
                 ->salutation()
                 ->handler(new CheckInOtpMessageHandler($code))
@@ -47,7 +48,7 @@
             Dear Jane, Your code is 1234.
         </x-docs::code>
         <p><code>handler()</code> hands the message to the handler, which fills the body, and returns the same message, so <code>send()</code> (or <code>toSMS()</code>, to inspect the payload) can follow it directly. A handler instance can be reused for several messages, because each call attaches the message it is given.</p>
-        <p><code>recipient()</code> says who the message is for: a model with a <code>phone_number</code>. <code>salutation()</code> opens the body with <code>Dear {the recipient's name}, </code>. <code>toSMS()</code> takes an optional sender ID and returns the payload item with <code>scope_type</code>, <code>scope_id</code>, <code>client_type</code>, <code>client_id</code>, <code>sender_id</code>, <code>number</code>, <code>text</code> and <code>meta_data</code>. A message has no scope unless you set one with <code>scope($model)</code>, a model that implements <code>MessageScope</code>, or start from a <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a>, which sets it for you. Add meta data with <code>metaData([...])</code>; <code>app_url</code> is always included.</p>
+        <p><code>recipient()</code> says who the message is for: a model with a <code>phone_number</code>. <code>salutation()</code> opens the body with <code>Dear {the recipient's name}, </code>. <code>toSMS()</code> takes an optional sender ID and returns the payload item with <code>scope_type</code>, <code>scope_id</code>, <code>client_type</code>, <code>client_id</code>, <code>sender_id</code>, <code>number</code>, <code>text</code> and <code>meta_data</code>. A message has no scope unless you set one with <code>scope($model)</code>, a model that implements <code>MessageScope</code>, or start from a <a href="{{ $docs->url('messenger') }}" class="text-primary underline">The channel switches</a>, which sets it for you. Add meta data with <code>metaData([...])</code>; <code>app_url</code> is always included.</p>
         <p>Numbers are turned into <code>254</code> plus the last nine digits, and a message without a usable number is dropped. Connect always receives a list of messages, even for one, and the package refuses an empty or non-list payload. Messages are grouped by <code>sender_id</code> (the config value when it is null) and sent in requests of up to 500. The second argument of the dispatch holds the queue tags.</p>
     </x-docs::section>
 
@@ -116,7 +117,7 @@
                 }
             }
 
-            $message = message()->handler(new InvoiceMessageHandler($invoice), 'reminder');
+            $message = message()->scope($project)->handler(new InvoiceMessageHandler($invoice), 'reminder');
         </x-docs::code>
         <p>For invoice <code>INV-1</code>, the two versions produce:</p>
         <x-docs::table :columns="['Call', 'Text produced']" :rows="[
@@ -138,6 +139,7 @@
                 $invoice = new Invoice(['number' => 'INV-1']);
 
                 $text = message()
+                    ->scope($project)
                     ->recipient($user)
                     ->handler(new InvoiceMessageHandler($invoice), 'reminder')
                     ->toSMS()['text'];

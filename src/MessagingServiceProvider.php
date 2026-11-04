@@ -119,22 +119,26 @@ class MessagingServiceProvider extends ServiceProvider
         $demos = new MessagingDemos;
 
         $this->app->make(DocsRegistry::class)->register((new Docs('nyumbani-messaging', 'Messaging', [
-            ['title' => 'Getting started', 'pages' => [
+            ['title' => 'Start here', 'pages' => [
                 'introduction' => 'Introduction',
                 'installation' => 'Installation',
-                'configuration' => 'Configuration',
                 'walkthrough' => 'Walkthrough',
             ]],
-            ['title' => 'Using Messaging', 'pages' => [
-                'sending-with-handlers' => 'Sending SMS with handlers',
-                'sending-without-handlers' => 'Sending SMS without handlers',
+            ['title' => 'The basics', 'pages' => [
+                'scopes' => 'Scopes and identity',
+                'writing-messages' => 'Writing a message',
+                'handlers' => 'Message handlers',
+                'sending' => 'Sending',
                 'sending-email' => 'Sending email',
-                'messenger' => 'Messenger',
-                'gateways' => 'Gateways',
-                'testing-and-troubleshooting' => 'Testing and troubleshooting',
+                'messenger' => 'The channel switches',
             ]],
             ['title' => 'Reference', 'pages' => [
                 'message' => 'Message reference',
+                'configuration' => 'Configuration',
+            ]],
+            ['title' => 'Under the hood', 'pages' => [
+                'gateways' => 'Gateways and delivery',
+                'testing-and-troubleshooting' => 'Testing and troubleshooting',
             ]],
         ], 'messaging::docs'))
             ->demo('message', $demos->message(...))

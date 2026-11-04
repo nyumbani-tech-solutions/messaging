@@ -1,6 +1,6 @@
 @extends('docs::layout')
 
-@section('page', 'Gateways')
+@section('page', 'Gateways and delivery')
 @section('lead', 'How a channel cleans, batches and delivers its messages, why its driver is fixed, and what adding a channel involves.')
 
 @section('content')

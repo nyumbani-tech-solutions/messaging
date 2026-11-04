@@ -17,16 +17,14 @@
             NYUMBANI_CONNECT_TOKEN=
             MESSAGING_SMS_SENDER_ID=NYUMBANI
         </x-docs::code>
-        <p>To send email as well, add the ZeptoMail settings. Email is off until <code>MESSAGING_EMAIL_ENABLED</code> is true.</p>
+        <p>To send email as well, add the ZeptoMail settings. Email is off until <code>MESSAGING_EMAIL_ENABLED</code> is true. The sender, reply-to, logo and organization name are not configured here: they come from each message's scope.</p>
         <x-docs::code lang="bash" title=".env">
             MESSAGING_EMAIL_ENABLED=true
-            MESSAGING_EMAIL_FROM_ADDRESS=noreply@example.com
-            MESSAGING_EMAIL_FROM_NAME="Acme Homes"
             ZEPTOMAIL_API_TOKEN=
             ZEPTOMAIL_TEMPLATE_KEY=
         </x-docs::code>
         <x-docs::callout type="warning" title="The tokens are secrets">
-            Keep them in the git-ignored <code>.env</code> only, never in code or <code>.env.example</code>. The sender address must belong to a domain verified in your ZeptoMail mail agent.
+            Keep them in the git-ignored <code>.env</code> only, never in code or <code>.env.example</code>. The scope's sender address must belong to a domain verified in your ZeptoMail mail agent.
         </x-docs::callout>
     </x-docs::section>
 
