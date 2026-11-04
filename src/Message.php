@@ -556,7 +556,7 @@ class Message
         //  Return the payload item
         return [
             'scope_type' => $scope->getMorphClass(),
-            'scope_id' => $scope->getKey(),
+            'scope_id' => (string) $scope->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
             'category' => $this->category,
@@ -610,7 +610,7 @@ class Message
         //  Return the payload item
         return [
             'scope_type' => $scope->getMorphClass(),
-            'scope_id' => $scope->getKey(),
+            'scope_id' => (string) $scope->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
             'address' => $recipient->email,
