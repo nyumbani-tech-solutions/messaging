@@ -61,7 +61,6 @@
     <x-docs::section id="flow" title="2. Stop early, then message each recipient">
         <x-docs::code title="app/Services/AdminNotificationService.php">
             use App\Services\Messaging\Handlers\BudgetReachedMessageHandler;
-            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Messenger;
 
             $messenger = Messenger::for($this->project);
@@ -70,14 +69,13 @@
                 return;
             }
 
-            $sms = $admins->map(fn ($admin) => $messenger
-                ->recipient($admin)
+            $messenger
+                ->message()
                 ->salutation()
                 ->handler(new BudgetReachedMessageHandler($categoryRows))
-                ->toSMS())->all();
-
-            MessageProcessed::dispatch(['sms' => $sms], ['budget']);
+                ->sendTo($admins, 'budget');
         </x-docs::code>
+        <p><code>message()</code> starts a message framed by the scope (its header, footer and sender ID) with no recipient yet. <code>sendTo()</code> sends a copy to each admin in one event per <code>messaging.chunk_size</code> recipients, and <code>salutation()</code> addresses each copy to that admin. For a single recipient, <code>$messenger->recipient($admin)->...->send('budget')</code> does the same for one message.</p>
         <p>For an admin named Jane, in a project called ACME HOMES, the text is:</p>
         <x-docs::code lang="text" title="Text produced">
             ACME HOMES
@@ -92,13 +90,13 @@
         <ul class="ml-5 list-disc space-y-1">
             <li>The scope's <code>messageHeader()</code> and <code>messageFooter()</code> are worked out once, the first time <code>recipient()</code> is called, and every message copies them. A null answer leaves the header or footer out together with its blank line.</li>
             <li>On one message, <code>header()</code> or <code>footer()</code> replaces what the scope gave, and null drops it.</li>
-            <li>The sender goes to Connect from the first of these that is set: the argument of <code>toSMS('ACME')</code>, the scope's <code>messageSenderId()</code> (or <code>senderId()</code> on the message), then the <code>messaging.connect.sms.sender_id</code> default.</li>
+            <li>The sender goes to Connect from the first of these that is set: the argument of <code>toSMS('ACME')</code>, the scope's <code>messageSenderId()</code> (or <code>senderId()</code> on the message), then the <code>messaging.connect.sms.sender_id</code> default. <code>toSMS()</code> throws a <code>LogicException</code> when none of them is set.</li>
             <li><code>Messenger::global()</code> has no scope, so its messages have no header or footer unless you set them on the message.</li>
-            <li><code>salutation()</code> with no argument uses the recipient's <code>name</code>. <code>salutation('Mr Otieno')</code> sets it by hand, and <code>salutation(null)</code> removes it. It is never added on its own.</li>
-            <li>The order of the calls does not matter: the text is put together when <code>toSMS()</code> runs.</li>
+            <li><code>salutation()</code> opens the body with the recipient's <code>name</code>, and it is left out unless you call it. <code>salutation(false)</code> removes it.</li>
+            <li>The order of the calls does not matter: the text is put together when <code>toSMS()</code>, <code>toEmail()</code> or <code>send()</code> runs.</li>
         </ul>
         <x-docs::callout type="warning" title="A recipient is required">
-            <code>toSMS()</code> and <code>salutation()</code> without a name throw a <code>LogicException</code> when no recipient was set.
+            <code>toSMS()</code> and <code>toEmail()</code> throw a <code>LogicException</code> when no recipient was set.
         </x-docs::callout>
     </x-docs::section>
 

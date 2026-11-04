@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 use Nyumbani\Docs\Docs;
 use Nyumbani\Docs\DocsRegistry;
 use Nyumbani\Messaging\Docs\MessagingDemos;
@@ -22,6 +23,9 @@ class MessagingServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        //  Load helpers
+        $this->loadHelpersFrom(__DIR__.'/Utils');
+
         //  Load the configuration file
         $this->mergeConfigFrom(__DIR__.'/../config/messaging.php', 'messaging');
     }
@@ -91,7 +95,14 @@ class MessagingServiceProvider extends ServiceProvider
      */
     protected function handleListener(): void
     {
-        Event::listen(MessageProcessed::class, SendMessageNotifications::class);
+        //  Get the event, which an app may replace with a class that extends MessageProcessed
+        $event = config('messaging.event');
+
+        if (! is_a($event, MessageProcessed::class, true)) {
+            throw new InvalidArgumentException('messaging.event must be '.MessageProcessed::class.' or a class that extends it.');
+        }
+
+        Event::listen($event, SendMessageNotifications::class);
     }
 
     /**
@@ -129,5 +140,17 @@ class MessagingServiceProvider extends ServiceProvider
             ->demo('message', $demos->message(...))
             ->demo('scope', $demos->scope(...))
             ->demo('send', $demos->send(...)));
+    }
+
+    /**
+     * Load every helper file in a folder.
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function loadHelpersFrom(string $path): void
+    {
+        foreach (glob("$path/*.php") as $helper) {
+            require_once $helper;
+        }
     }
 }

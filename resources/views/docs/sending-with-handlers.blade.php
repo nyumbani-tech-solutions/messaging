@@ -34,23 +34,20 @@
     <x-docs::section id="send" title="2. Attach it and send">
         <x-docs::code title="Anywhere in the app">
             use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
-            use Nyumbani\Messaging\Message;
-            use Nyumbani\Messaging\Events\MessageProcessed;
 
-            $sms = Message::make()
+            message()
                 ->recipient($user)
                 ->salutation()
                 ->handler(new CheckInOtpMessageHandler($code))
-                ->toSMS('ACME');
-
-            MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
+                ->senderId('ACME')
+                ->send('otp');
         </x-docs::code>
         <p>For a user named Jane and the code 1234, the text of the SMS is:</p>
         <x-docs::code lang="text" title="Text produced">
             Dear Jane, Your code is 1234.
         </x-docs::code>
-        <p><code>handler()</code> hands the message to the handler, which fills the body, and returns the same message, so <code>toSMS()</code> can follow it directly. A handler instance can be reused for several messages, because each call attaches the message it is given.</p>
-        <p><code>recipient()</code> says who the message is for: a model with a <code>phone_number</code>. <code>salutation()</code> with no argument opens the body with <code>Dear {the recipient's name}, </code>. <code>toSMS()</code> takes an optional sender ID and returns the payload item with <code>scope_type</code>, <code>scope_id</code>, <code>client_type</code>, <code>client_id</code>, <code>sender_id</code>, <code>number</code>, <code>text</code> and <code>meta_data</code>. A message has no scope unless you set one with <code>scope($model)</code>, a model that implements <code>MessageScope</code>, or start from a <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a>, which sets it for you. Add meta data with <code>metaData([...])</code>; <code>app_url</code> is always included.</p>
+        <p><code>handler()</code> hands the message to the handler, which fills the body, and returns the same message, so <code>send()</code> (or <code>toSMS()</code>, to inspect the payload) can follow it directly. A handler instance can be reused for several messages, because each call attaches the message it is given.</p>
+        <p><code>recipient()</code> says who the message is for: a model with a <code>phone_number</code>. <code>salutation()</code> opens the body with <code>Dear {the recipient's name}, </code>. <code>toSMS()</code> takes an optional sender ID and returns the payload item with <code>scope_type</code>, <code>scope_id</code>, <code>client_type</code>, <code>client_id</code>, <code>sender_id</code>, <code>number</code>, <code>text</code> and <code>meta_data</code>. A message has no scope unless you set one with <code>scope($model)</code>, a model that implements <code>MessageScope</code>, or start from a <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a>, which sets it for you. Add meta data with <code>metaData([...])</code>; <code>app_url</code> is always included.</p>
         <p>Numbers are turned into <code>254</code> plus the last nine digits, and a message without a usable number is dropped. Connect always receives a list of messages, even for one, and the package refuses an empty or non-list payload. Messages are grouped by <code>sender_id</code> (the config value when it is null) and sent in requests of up to 500. The second argument of the dispatch holds the queue tags.</p>
     </x-docs::section>
 
@@ -119,7 +116,7 @@
                 }
             }
 
-            $message = Message::make()->handler(new InvoiceMessageHandler($invoice), 'reminder');
+            $message = message()->handler(new InvoiceMessageHandler($invoice), 'reminder');
         </x-docs::code>
         <p>For invoice <code>INV-1</code>, the two versions produce:</p>
         <x-docs::table :columns="['Call', 'Text produced']" :rows="[
@@ -134,14 +131,13 @@
             use App\Models\Invoice;
             use App\Models\User;
             use App\Services\Messaging\Handlers\InvoiceMessageHandler;
-            use Nyumbani\Messaging\Message;
 
             it('writes the reminder', function () {
                 $user = new User;
                 $user->setAttribute('phone_number', '0712345678');
                 $invoice = new Invoice(['number' => 'INV-1']);
 
-                $text = Message::make()
+                $text = message()
                     ->recipient($user)
                     ->handler(new InvoiceMessageHandler($invoice), 'reminder')
                     ->toSMS()['text'];

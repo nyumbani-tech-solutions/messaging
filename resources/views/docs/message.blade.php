@@ -5,7 +5,7 @@
 
 @section('content')
     <x-docs::section id="overview" title="Message">
-        <p><code>Nyumbani\Messaging\Message</code> builds one SMS or email. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code>, <code>toEmail()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
+        <p><code>Nyumbani\Messaging\Message</code> builds one SMS or email. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code>, <code>toEmail()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>message()</code> or <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
         <p>The text of the SMS is put together in this order, with a blank line between the header and the rest, and between the body and the footer:</p>
         <x-docs::code lang="text" title="Layout of the text">
             {header}
@@ -19,7 +19,7 @@
 
     <x-docs::section id="recipient" title="Recipient">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
-            ['recipient(Model $recipient)', 'Sets who the message is for: a model with a phone_number. Required before salutation() without a name and before toSMS().'],
+            ['recipient(Model $recipient)', 'Sets who the message is for: a model with a phone_number. Required before toSMS() and toEmail().'],
             ['getRecipient()', 'Returns the recipient, or null. A handler can read it as $this->message->getRecipient().'],
         ]" />
         <p>A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a> starts a message with the recipient, scope, header and footer already set.</p>
@@ -28,16 +28,16 @@
     <x-docs::section id="frame" title="Header, salutation, footer">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
             ['header(?string $header)', 'Sets the line shown above everything, such as an organisation name. Null removes it.'],
-            ['salutation(?string $name = null)', 'With a name, opens the body with Dear {name}, . With no argument, uses the recipient\'s name and needs recipient() first. Null removes it.'],
+            ['salutation(bool $include = true)', 'Opens the body with Dear {name}, , using the recipient\'s name, which is read when the payload is built, so it does not matter whether recipient() comes before or after. Not calling it leaves the salutation out, and salutation(false) removes it. A recipient with no name gets none.'],
             ['footer(?string $footer)', 'Sets the line shown below the body. Null removes it.'],
-            ['senderId(?string $senderId)', 'Sets the sender ID the message is sent from. Null means the default sender. A Messenger sets it from the scope.'],
+            ['senderId(string $senderId)', 'Sets the sender ID the message is sent from. Without it the configured default sender is used. A Messenger sets it from the scope when the scope has one.'],
         ]" />
         <x-docs::code title="Example">
             use Nyumbani\Messaging\Message;
 
             $message = Message::make()
                 ->header('ACME HOMES')
-                ->salutation('Jane')
+                ->salutation()
                 ->footer('Thank you');
         </x-docs::code>
     </x-docs::section>
@@ -101,12 +101,33 @@
         <x-docs::table :columns="['Key', 'Value']" :rows="[
             ['scope_type, scope_id', 'The morph class and key of the scope set with scope(), or null when none was set.'],
             ['client_type, client_id', 'The morph class and key of the recipient.'],
-            ['sender_id', 'The sender from the argument or senderId(), or null so the configured default sender is used.'],
+            ['sender_id', 'The sender from the argument, senderId() or messaging.connect.sms.sender_id. toSMS() throws a LogicException when none of them is set.'],
             ['number', 'The recipient\'s phone_number, as stored. The gateway turns it into 254 and the last nine digits.'],
             ['text', 'The full text: header, salutation, body and footer.'],
             ['meta_data', 'app_url plus anything added with metaData().'],
         ]" />
-        <p>Put the item in a <code>MessageProcessed</code> payload under <code>sms</code> to send it. The message is not queued by <code>toSMS()</code> itself.</p>
+        <p><code>toSMS()</code> does not queue anything. To send one message call <code>send()</code>, below. To send many at once, put the items in a <code>MessageProcessed</code> payload under <code>sms</code>.</p>
+    </x-docs::section>
+
+    <x-docs::section id="send" title="Sending">
+        <x-docs::table :columns="['Method', 'What it does']" :rows="[
+            ['send(array|string $tags = [])', 'Builds the payload of the message\'s channels and dispatches the event named in messaging.event (MessageProcessed by default). Returns the message.'],
+            ['subject(?string $subject)', 'Sets the email subject. A message with a subject goes out by email as well as SMS.'],
+            ['sendTo(iterable $recipients, array|string $tags = [], ?callable $each = null)', 'Sends a copy of the message to each recipient, one event for every messaging.chunk_size recipients. salutation() uses the recipient of each copy. The callback gets the copy and its recipient, runs after the shared content, and returning false skips the recipient. Accepts cursor() and lazy().'],
+            ['via(MessageChannel|string|array $channels)', 'Chooses the channels, such as [\'sms\', \'email\'] or \'email\', instead of the default. An unknown channel throws a ValueError and an empty list a LogicException.'],
+        ]" />
+        <x-docs::code title="Example">
+            message()
+                ->recipient($user)
+                ->salutation()
+                ->text('Your rent is due on Friday.')
+                ->subject('Rent reminder')
+                ->via(['sms', 'email'])
+                ->send('rent');
+
+            message()->text('Rent is due Friday.')->salutation()->sendTo($tenants, 'rent');
+        </x-docs::code>
+        <p>Without <code>via()</code>, SMS always goes out and email only when the message has a subject. <code>send()</code> queues one job per message, so for many recipients use <code>sendTo()</code>, which batches them. Tags apply to the whole dispatch, so they are given to <code>sendTo()</code> and not per recipient. Set <code>messaging.event</code> to your own class to dispatch another event; it must extend <code>MessageProcessed</code>, and the package listens to it in place of the original.</p>
     </x-docs::section>
 
     <x-docs::section id="email" title="Email">

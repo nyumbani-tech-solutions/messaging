@@ -43,11 +43,11 @@ class Messenger
     }
 
     /**
-     * Start a message to a recipient, scoped to the messenger's scope and framed by the scope's header, footer and sender ID
+     * Start a message with no recipient yet, scoped to the messenger's scope and framed by its header, footer and sender ID, ready for sendTo()
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function recipient(Model $recipient): Message
+    public function message(): Message
     {
         //  Work out the header, footer and sender ID once, for all the recipients
         [$header, $footer, $senderId] = $this->frame ??= [
@@ -58,11 +58,20 @@ class Messenger
 
         //  Return the message
         return Message::make()
-            ->recipient($recipient)
             ->scope($this->scope)
             ->header($header)
             ->footer($footer)
-            ->senderId($senderId);
+            ->when(filled($senderId), fn (Message $message) => $message->senderId($senderId));
+    }
+
+    /**
+     * Start a message to a recipient, scoped to the messenger's scope and framed by the scope's header, footer and sender ID
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function recipient(Model $recipient): Message
+    {
+        return $this->message()->recipient($recipient);
     }
 
     /**

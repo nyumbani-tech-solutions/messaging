@@ -41,9 +41,9 @@ class EmailLines
             //  Return the action
             return [
                 'link' => [
-                    'action' => $action ?: 'Click Here', 
-                    'url' => $matches[0]
-                ]
+                    'action' => $action ?: 'Click Here',
+                    'url' => $matches[0],
+                ],
             ];
         }
 

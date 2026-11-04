@@ -1,6 +1,20 @@
 <?php
 
+use Nyumbani\Messaging\Events\MessageProcessed;
+
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Event
+    |--------------------------------------------------------------------------
+    |
+    | The event Message::send() dispatches, and the one the package listens to
+    | in order to deliver messages. Use your own class only when it extends
+    | MessageProcessed.
+    |
+    */
+    'event' => MessageProcessed::class,
+
     /*
     |--------------------------------------------------------------------------
     | Rate limit
@@ -10,6 +24,16 @@ return [
     |
     */
     'rate_limit_per_second' => 4,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chunk size
+    |--------------------------------------------------------------------------
+    |
+    | The most recipients Message::sendTo() puts in one event.
+    |
+    */
+    'chunk_size' => 500,
 
     /*
     |--------------------------------------------------------------------------

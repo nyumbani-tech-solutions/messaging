@@ -10,24 +10,20 @@
 
     <x-docs::section id="send" title="Build and send">
         <x-docs::code title="Anywhere in the app">
-            use Nyumbani\Messaging\Message;
-            use Nyumbani\Messaging\Events\MessageProcessed;
-
-            $sms = Message::make()
+            message()
                 ->recipient($user)
                 ->salutation()
                 ->text("Your code is {$code}.")->newLine()
                 ->text('It expires in 5 minutes.')
-                ->toSMS('ACME');
-
-            MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
+                ->senderId('ACME')
+                ->send('otp');
         </x-docs::code>
         <p>For a user named Jane and the code 1234, the text of the SMS is:</p>
         <x-docs::code lang="text" title="Text produced">
             Dear Jane, Your code is 1234.
             It expires in 5 minutes.
         </x-docs::code>
-        <p>Everything after the message is built is the same as with a handler: <code>toSMS()</code> returns the payload item, <code>MessageProcessed</code> queues it, and Connect receives a list of messages.</p>
+        <p><code>message()</code> is the same as <code>Message::make()</code>. <code>send()</code> takes one queue tag or an array of them and returns the message. Everything after that is the same as with a handler: the <code>MessageProcessed</code> event queues the SMS and Connect receives a list of messages. Without <code>senderId()</code> the sender is <code>messaging.connect.sms.sender_id</code>.</p>
     </x-docs::section>
 
     <x-docs::section id="more" title="Header, links and conditions">
@@ -36,12 +32,14 @@
 
             $isOverdue = true;
 
-            $message = Message::make()
+            $message = message()
+                ->recipient($user)
                 ->header('ACME HOMES')
-                ->salutation('Jane')
+                ->salutation()
                 ->text('Your rent is due.')->newLine(2)
                 ->action('https://acme.test/pay', 'Pay now:')
-                ->when($isOverdue, fn (Message $message) => $message->prepend('OVERDUE: '));
+                ->when($isOverdue, fn (Message $message) => $message->prepend('OVERDUE: '))
+                ->send('rent');
         </x-docs::code>
         <p>For an overdue invoice, <code>toSMS()['text']</code> is:</p>
         <x-docs::code lang="text" title="Text produced">

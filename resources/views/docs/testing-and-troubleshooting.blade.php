@@ -7,7 +7,7 @@
     <x-docs::section id="levels" title="Three things to test">
         <x-docs::table :columns="['Question', 'Test it by', 'Needs']" :rows="[
             ['Is the wording right?', 'Building the message and reading toSMS()[\'text\'].', 'Nothing: no fake, no queue.'],
-            ['Is the message queued?', 'Dispatching MessageProcessed under Queue::fake().', 'Queue::fake()'],
+            ['Is the message queued?', 'Calling send() (or dispatching MessageProcessed) under Queue::fake().', 'Queue::fake()'],
             ['Does Connect get the right request?', 'Running the job by hand under Http::fake().', 'Http::fake() and the Connect config'],
         ]" />
     </x-docs::section>
@@ -22,21 +22,18 @@
             use App\Models\User;
             use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
             use Illuminate\Support\Facades\Queue;
-            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Jobs\SendMessageJob;
-            use Nyumbani\Messaging\Message;
 
             it('queues the code', function () {
                 Queue::fake();
 
                 $user = User::factory()->create(['phone_number' => '0712 345 678']);
 
-                $sms = Message::make()
+                message()
                     ->recipient($user)
                     ->handler(new CheckInOtpMessageHandler('1234'))
-                    ->toSMS('ACME');
-
-                MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
+                    ->senderId('ACME')
+                    ->send('otp');
 
                 Queue::assertPushed(SendMessageJob::class, fn (SendMessageJob $job) => $job->payload[0]['recipient'] === '254712345678'
                     && $job->payload[0]['sender_id'] === 'ACME'
@@ -47,12 +44,12 @@
                 Queue::fake();
                 config(['messaging.connect.sms.enabled' => false]);
 
-                // ... dispatch as above
+                // ... send as above
 
                 Queue::assertNothingPushed();
             });
         </x-docs::code>
-        <p>The queued job's <code>payload</code> is the body Connect will receive, so you can assert on any field of it.</p>
+        <p>The queued job's <code>payload</code> is the body Connect will receive, so you can assert on any field of it. To prove the event itself, use <code>Event::fake([MessageProcessed::class])</code> and assert on its <code>payload</code> and <code>tags</code>; this also works for <code>sendTo()</code>, where one event carries up to <code>messaging.chunk_size</code> recipients. If you set <code>messaging.event</code>, fake and assert your own class.</p>
     </x-docs::section>
 
     <x-docs::section id="delivered" title="3. The request to Connect">
@@ -90,14 +87,12 @@
     </x-docs::section>
 
     <x-docs::section id="email-tests" title="Testing an email">
-        <p>The same three levels apply. Read <code>toEmail('Subject')['body']</code> for the wording, fake the queue for the batch, and run the job by hand for the ZeptoMail request.</p>
+        <p>The same three levels apply. Read <code>subject('Subject')->toEmail()['body']</code> for the wording, fake the queue for the batch, and run the job by hand for the ZeptoMail request.</p>
         <x-docs::code title="tests/Feature/InvoiceEmailTest.php">
             use Illuminate\Support\Facades\Http;
             use Illuminate\Support\Facades\Queue;
-            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Gateways\EmailGateway;
             use Nyumbani\Messaging\Jobs\SendMessageJob;
-            use Nyumbani\Messaging\Message;
 
             beforeEach(function () {
                 config([
@@ -112,9 +107,7 @@
             it('queues the email', function () {
                 Queue::fake();
 
-                $email = Message::make()->recipient($user)->salutation()->text('Hi.')->toEmail('Hello');
-
-                MessageProcessed::dispatch(['email' => [$email]], ['invoice']);
+                message()->recipient($user)->salutation()->text('Hi.')->subject('Hello')->via('email')->send('invoice');
 
                 Queue::assertPushed(SendMessageJob::class, fn (SendMessageJob $job) => $job->payload['template_key'] === 'tpl-default'
                     && $job->payload['to'][0]['email_address']['address'] === $user->email);
@@ -139,10 +132,10 @@
             ['Was a job queued?', 'Check the jobs table, or Horizon, for SendMessageJob.', 'No job means the message never left the listener: see the two checks above.'],
             ['Did the job fail?', 'php artisan queue:failed, and the log for Message sending failed.', 'The error shows Connect\'s answer. A 401 is a wrong NYUMBANI_CONNECT_TOKEN; a connection error is a wrong NYUMBANI_CONNECT_BASE_URL.'],
             ['Is it only slow?', 'Many requests at once wait for the rate limit.', 'Raise messaging.rate_limit_per_second, or wait: nothing is lost.'],
-            ['Wrong sender?', 'toSMS() argument, then the scope, then the config default.', 'Set messageSenderId() on the scope or pass the sender to toSMS().'],
+            ['Wrong sender?', 'The senderId() or toSMS() argument, then the scope, then the config default.', 'Call senderId() on the message, set messageSenderId() on the scope or set MESSAGING_SMS_SENDER_ID. With none of them toSMS() throws.'],
             ['Is email switched off?', 'config(\'messaging.email.enabled\') and the scope\'s isMessageChannelEnabled().', 'Set MESSAGING_EMAIL_ENABLED=true. Email is off by default, and a switched-off message is dropped without any error.'],
             ['Was the email dropped for its address?', 'The address must pass a normal email check.', 'Store a valid email. An invalid one is dropped silently.'],
-            ['Did dispatching an email throw?', 'A LogicException says what is missing.', 'Set messaging.email.from.address (or call from()), and ZEPTOMAIL_TEMPLATE_KEY (or emailOptions()).'],
+            ['Did sending an email throw?', 'A LogicException says what is missing.', 'Call subject() (every email needs one), set messaging.email.from.address (or call from()), and ZEPTOMAIL_TEMPLATE_KEY (or emailOptions()).'],
             ['Did ZeptoMail refuse it?', 'php artisan queue:failed and the log for Message sending failed.', 'The error shows ZeptoMail\'s answer. A 401 is a wrong ZEPTOMAIL_API_TOKEN; a sender from an unverified domain is refused.'],
         ]" />
         <x-docs::callout type="tip" title="Read the exact request">

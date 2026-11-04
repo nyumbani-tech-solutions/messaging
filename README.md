@@ -48,38 +48,54 @@ Messages go through your queue. With `QUEUE_CONNECTION=sync` they are sent durin
 
 ```php
 use App\Services\Messaging\Handlers\CheckInOtpMessageHandler;
-use Nyumbani\Messaging\Message;
-use Nyumbani\Messaging\Events\MessageProcessed;
 
-$sms = Message::make()
+message()
     ->recipient($user)
     ->salutation()
     ->handler(new CheckInOtpMessageHandler($code))
-    ->toSMS('ACME');
-
-MessageProcessed::dispatch(['sms' => [$sms]], ['otp']);
+    ->senderId('ACME')
+    ->send('otp');
 ```
+
+`message()` is the same as `Message::make()`. `send()` takes one tag or an array of tags and returns the message.
 
 The recipient is a model with a `phone_number`. Numbers become `254` plus the last nine digits, messages are grouped by sender ID, and Connect always receives a list of messages.
 
 ## Send an email
 
 ```php
-use Nyumbani\Messaging\Events\MessageProcessed;
-use Nyumbani\Messaging\Message;
-
-$email = Message::make()
+message()
     ->recipient($user)
     ->from('billing@acme.example', 'Acme Homes')
     ->logo('https://acme.example/logo.png')
     ->salutation()
     ->text('Your rent is due on Friday.')
-    ->toEmail('Rent reminder');
-
-MessageProcessed::dispatch(['email' => [$email]], ['rent']);
+    ->subject('Rent reminder')
+    ->send('rent');
 ```
 
+A message with a `subject()` goes out by SMS and email. `via(['sms', 'email'])` chooses the channels instead (`via('email')` is email only), and an email without a subject throws. The channel switches still apply: email stays off until `MESSAGING_EMAIL_ENABLED` is on.
+
 The recipient is a model with an `email` and a `name`. Branding is set on each message (`from()`, `replyTo()`, `logo()`, `organization()`), and whatever it leaves out comes from `messaging.email`. `emailOptions(['template_key' => '...'])` uses another ZeptoMail template than the configured one. The body is shared with the SMS unless you give the email its own with `emailBody()` or a handler's `email()` method and `emailHandler()`. Emails are grouped by sender and template and sent 50 to a request. See the Sending email docs page.
+
+## Many recipients
+
+`sendTo()` sends a copy of one message to each recipient, with one event for every 500 of them (`messaging.chunk_size`), so the gateways batch the requests. It accepts any iterable, including `cursor()` and `lazy()`.
+
+```php
+message()->text('Rent is due Friday.')->salutation()->sendTo($tenants, 'rent');
+```
+
+`salutation()` opens each copy with that recipient's name, so every tenant gets their own `Dear Jane, `. Leaving it out sends no salutation. For content that differs per recipient, pass a callback that receives the copy and its recipient. It runs after the shared content, so what it adds goes at the end of the body, and returning `false` skips the recipient:
+
+```php
+message()
+    ->salutation()
+    ->sendTo($tenants, 'rent', fn (Message $message, Tenant $tenant) => $message
+        ->handler(new RentReminderHandler($tenant)));
+```
+
+Tags apply to the whole dispatch, so they are the second argument of `sendTo()` and not per recipient. `$messenger->message()` starts a message framed by the scope with no recipient yet, for `sendTo()`. Load whatever the callback reads before calling `sendTo()` to avoid a query per recipient. To build the items yourself, dispatch them together: `MessageProcessed::dispatch(['sms' => $items], $tags)`.
 
 ## Handlers
 
@@ -87,7 +103,7 @@ A handler owns the wording of one message type: it takes its inputs in the const
 
 ## Messenger
 
-`Messenger::for($project)` holds the channel switches (the scope is required and must implement `MessageScope`, which also supplies `messageHeader()`, `messageFooter()` and `messageSenderId()`, each `?string`; use `Messenger::global()` when there is none) and starts messages: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. Implement `Nyumbani\Messaging\Contracts\MessageScope` on the project to switch a channel off for it. `canSend()` and `emailEnabled()` answer early, and the listener drops messages whose scope has the channel off. See the Messenger docs page.
+`Messenger::for($project)` holds the channel switches (the scope is required and must implement `MessageScope`, which also supplies `messageHeader()`, `messageFooter()` and `messageSenderId()`, each `?string`; use `Messenger::global()` when there is none) and starts messages: `$messenger->recipient($admin)->salutation()->handler(...)->send('tag')`. Implement `Nyumbani\Messaging\Contracts\MessageScope` on the project to switch a channel off for it. `canSend()` and `emailEnabled()` answer early, and the listener drops messages whose scope has the channel off. See the Messenger docs page.
 
 ## Configuration
 
@@ -95,11 +111,13 @@ Publish `config/messaging.php` with `php artisan vendor:publish --tag=messaging-
 
 | Key | Environment | Purpose |
 | --- | --- | --- |
+| `event` | | The event `send()` dispatches and the package listens to (`MessageProcessed`); a custom class must extend it |
+| `chunk_size` | | Most recipients `sendTo()` puts in one event (500) |
 | `rate_limit_per_second` | | Queued requests sent each second (4) |
 | `connect.base_url` | `NYUMBANI_CONNECT_BASE_URL` | Address of Nyumbani Connect |
 | `connect.access_token` | `NYUMBANI_CONNECT_TOKEN` | Bearer token |
 | `connect.sms.enabled` | `MESSAGING_SMS_ENABLED` | Switch SMS off when false |
-| `connect.sms.sender_id` | `MESSAGING_SMS_SENDER_ID` | Sender when a message has none |
+| `connect.sms.sender_id` | `MESSAGING_SMS_SENDER_ID` | Sender when a message has none; an SMS with no sender anywhere throws |
 | `connect.sms.uri` | | Connect path for SMS |
 | `email.enabled` | `MESSAGING_EMAIL_ENABLED` | Switch email on (off by default) |
 | `email.from.address`, `email.from.name` | `MESSAGING_EMAIL_FROM_ADDRESS`, `MESSAGING_EMAIL_FROM_NAME` | Sender when a message has none |

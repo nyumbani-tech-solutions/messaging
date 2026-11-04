@@ -3,8 +3,11 @@
 namespace Nyumbani\Messaging;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\LazyCollection;
 use LogicException;
 use Nyumbani\Messaging\Contracts\MessageScope;
+use Nyumbani\Messaging\Enums\MessageChannel;
+use Nyumbani\Messaging\Events\MessageProcessed;
 
 class Message
 {
@@ -14,9 +17,9 @@ class Message
     protected ?string $header = null;
 
     /**
-     * The salutation that opens the body
+     * Whether the body opens with a salutation to the recipient's name
      */
-    protected ?string $salutation = null;
+    protected bool $salutation = false;
 
     /**
      * The message body
@@ -55,15 +58,11 @@ class Message
 
     /**
      * The address and name the email is sent from, or null for the configured sender
-     *
-     * @var array{address: string, name: ?string}|null
      */
     protected ?array $from = null;
 
     /**
      * The address and name replies go to, or null for the configured reply-to
-     *
-     * @var array{address: string, name: ?string}|null
      */
     protected ?array $replyTo = null;
 
@@ -76,6 +75,16 @@ class Message
      * The organization name shown in the email, or null for the configured one
      */
     protected ?string $organizationName = null;
+
+    /**
+     * The subject of the email, which turns the email channel on unless via() chooses the channels
+     */
+    protected ?string $subject = null;
+
+    /**
+     * The channels the message goes out on, or null to send SMS and, when it has a subject, email
+     */
+    protected ?array $channels = null;
 
     /**
      * The options the email driver reads, such as the template_key of the ZeptoMail template
@@ -121,19 +130,14 @@ class Message
     }
 
     /**
-     * Address the message to a name, or to the recipient's name when none is given
+     * Open the body with a salutation to the recipient's name, or pass false to leave it out
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function salutation(?string $name = null): static
+    public function salutation(bool $include = true): static
     {
-        //  Use the recipient's name when called without an argument
-        if (func_num_args() === 0) {
-            $name = $this->requireRecipient('salutation()')->name;
-        }
-
-        //  Set the salutation
-        $this->salutation = $name ? "Dear {$name}, " : null;
+        //  Set whether the salutation is included
+        $this->salutation = $include;
 
         //  Return the message
         return $this;
@@ -154,11 +158,11 @@ class Message
     }
 
     /**
-     * Set the sender ID the message is sent from, null for the default
+     * Set the sender ID the message is sent from
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function senderId(?string $senderId): static
+    public function senderId(string $senderId): static
     {
         //  Set the sender ID
         $this->senderId = $senderId;
@@ -246,6 +250,54 @@ class Message
     {
         //  Set the organization name
         $this->organizationName = $name;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the subject of the email
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function subject(?string $subject): static
+    {
+        //  Set the subject
+        $this->subject = $subject;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Choose the channels the message goes out on, such as ['sms', 'email'], instead of the default
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function via(MessageChannel|string|array $channels): static
+    {
+        //  Define the channels
+        $channels = collect(is_array($channels) ? $channels : [$channels]);
+
+        //  Define the callback
+        $callback = fn (MessageChannel|string $channel) => ! ($channel instanceof MessageChannel)
+            ? MessageChannel::from($channel)
+            : $channel;
+
+        //  Turn each channel into its enum
+        $channels = $channels
+            ->map($callback)
+            ->unique()
+            ->values()
+            ->all();
+
+        //  Sending on no channel sends nothing, which is a mistake
+        if ($channels === []) {
+            throw new LogicException('via() needs at least one channel.');
+        }
+
+        //  Set the channels
+        $this->channels = $channels;
 
         //  Return the message
         return $this;
@@ -425,7 +477,7 @@ class Message
     }
 
     /**
-     * Get the SMS payload item for the recipient, from the sender given, the message's sender or the default
+     * Get the SMS payload item for the recipient, from the sender given, the message's sender or the configured default, throwing when there is none
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -440,28 +492,42 @@ class Message
         //  Separate the footer
         $footer = $this->footer ? "\n\n{$this->footer}" : '';
 
+        //  Get the text
+        $text = "{$header}{$this->greeting($recipient)}{$this->body}{$footer}";
+
+        //  Get the sender ID, which every SMS needs
+        $senderId = ($senderId ?? $this->senderId) ?: config('messaging.connect.sms.sender_id');
+
+        //  Throw when there is no sender ID
+        if (blank($senderId)) {
+            throw new LogicException('An SMS needs a sender ID: call senderId() on the message or set messaging.connect.sms.sender_id.');
+        }
+
         //  Return the payload item
         return [
             'scope_type' => $this->scope?->getMorphClass(),
             'scope_id' => $this->scope?->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
-            'sender_id' => $senderId ?? $this->senderId,
+            'sender_id' => $senderId,
             'number' => $recipient->phone_number,
-            'text' => "{$header}{$this->salutation}{$this->body}{$footer}",
+            'text' => $text,
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
         ];
     }
 
     /**
-     * Get the email payload item for the recipient, who must have an email and a name
+     * Get the email payload item for the recipient, who must have an email and a name, with the subject given or the message's own
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function toEmail(string $subject): array
+    public function toEmail(?string $subject = null): array
     {
         //  Get the recipient
         $recipient = $this->requireRecipient('toEmail()');
+
+        //  Get the subject, which every email needs
+        $subject ??= $this->subject ?? throw new LogicException('An email needs a subject: call subject() first.');
 
         //  Return the payload item
         return [
@@ -477,12 +543,107 @@ class Message
             'logo' => $this->logo,
             'organization_name' => $this->organizationName,
             'header' => $this->header ? trim($this->header) : null,
-            'salutation' => $this->salutation ? trim($this->salutation) : null,
+            'salutation' => ($greeting = $this->greeting($recipient)) ? trim($greeting) : null,
             'body' => $this->emailBody ?? $this->body,
             'footer' => $this->footer ? trim($this->footer) : null,
             'options' => $this->emailOptions,
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
         ];
+    }
+
+    /**
+     * Send the message on its channels by dispatching the configured event, and return the message
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function send(array|string $tags = []): static
+    {
+        //  Dispatch the one message
+        $this->dispatch([$this], $tags);
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Send a copy of the message to each recipient, one event for every chunk of recipients, and return the message
+     *
+     * The callback receives the copy and its recipient to add what is theirs, and returning false skips the recipient.
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function sendTo(iterable $recipients, array|string $tags = [], ?callable $each = null): static
+    {
+        //  Build the callback
+        $callback = function (Model $recipient) use ($each) {
+            //  Copy the shared message for the recipient
+            $copy = (clone $this)->recipient($recipient);
+
+            //  Let the callback add what is the recipient's, where false skips them
+            return ($each ? $each($copy, $recipient) : $copy) === false ? null : $copy;
+        };
+
+        //  Dispatch the chunks
+        LazyCollection::make($recipients)
+            ->map($callback)
+            ->filter()
+            ->chunk(max(1, (int) config('messaging.chunk_size', 500)))
+            ->each(fn (LazyCollection $chunk) => $this->dispatch($chunk->all(), $tags));
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Dispatch the event the app chose, which is MessageProcessed by default, with the messages of each channel
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function dispatch(array $messages, array|string $tags): void
+    {
+        //  Build the payload, keyed by channel
+        $payload = [];
+
+        //  Build the payload
+        foreach ($messages as $message) {
+            foreach ($message->resolveChannels() as $channel) {
+                $payload[$channel->value][] = match ($channel) {
+                    MessageChannel::SMS => $message->toSMS(),
+                    MessageChannel::EMAIL => $message->toEmail(),
+                };
+            }
+        }
+
+        //  Dispatch the event
+        $event = config('messaging.event', MessageProcessed::class);
+
+        //  Dispatch the event
+        $event::dispatch($payload, (array) $tags);
+    }
+
+    /**
+     * Get the channels the message goes out on: those chosen with via(), otherwise SMS and, when there is a subject, email
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function resolveChannels(): array
+    {
+        return $this->channels ?? array_filter([
+            MessageChannel::SMS,
+            $this->subject ? MessageChannel::EMAIL : null,
+        ]);
+    }
+
+    /**
+     * Get the salutation to the recipient's name, or an empty string when there is none or the recipient has no name
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function greeting(Model $recipient): string
+    {
+        return $this->salutation && filled($recipient->name)
+            ? "Dear {$recipient->name}, "
+            : '';
     }
 
     /**

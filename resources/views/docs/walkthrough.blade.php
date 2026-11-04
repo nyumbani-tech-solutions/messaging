@@ -53,14 +53,13 @@
         <p>See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for the rules.</p>
     </x-docs::section>
 
-    <x-docs::section id="send" title="4. Build one message per recipient and send them together">
-        <p>The invoice has two tenants. A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a> scoped to the invoice's property gets the header and footer from it once, and each tenant gets their own message from it, because the salutation differs. Both go into one payload.</p>
+    <x-docs::section id="send" title="4. Send one message to every recipient">
+        <p>The invoice has two tenants. A <a href="{{ $docs->url('messenger') }}" class="text-primary underline">Messenger</a> scoped to the invoice's property gets the header, footer and sender from it once. <code>sendTo()</code> then sends a copy to each tenant, with the salutation addressed to that tenant, in one event.</p>
         <x-docs::code title="app/Http/Controllers/InvoiceController.php">
             use App\Models\Invoice;
             use App\Models\Tenant;
             use App\Services\Messaging\Handlers\InvoiceIssuedMessageHandler;
             use Illuminate\Http\RedirectResponse;
-            use Nyumbani\Messaging\Events\MessageProcessed;
             use Nyumbani\Messaging\Messenger;
 
             class InvoiceController
@@ -75,22 +74,20 @@
 
                     $handler = new InvoiceIssuedMessageHandler($invoice, route('invoices.pay', ['invoice' => $invoice]));
 
-                    $messages = $invoice->tenants->map(fn (Tenant $tenant) => $messenger
-                        ->recipient($tenant)
+                    $messenger
+                        ->message()
                         ->salutation()
                         ->handler($handler)
-                        ->toSMS())->all();
-
-                    MessageProcessed::dispatch(['sms' => $messages], ['invoice-issued']);
+                        ->sendTo($invoice->tenants, 'invoice-issued');
 
                     return back();
                 }
             }
         </x-docs::code>
-        <p>The handler is built once and reused for both tenants. Load <code>tenants</code> and <code>property</code> with the invoice so no query runs per tenant.</p>
+        <p>The handler is built once and reused for both tenants. To add something per tenant, pass a callback as the third argument of <code>sendTo()</code>. Load <code>tenants</code> and <code>property</code> with the invoice so no query runs per tenant.</p>
     </x-docs::section>
 
-    <x-docs::section id="item" title="5. What toSMS() returns">
+    <x-docs::section id="item" title="5. What the payload item holds">
         <p>This is the item for the first tenant. The scope is the property, set by <code>Messenger::for($invoice->property)</code>; <code>property</code> and <code>tenant</code> are the names in your app's morph map, which is why <code>scope_type</code> and <code>client_type</code> are not class names. The <code>Property</code> model implements <code>MessageScope</code>: it answers <code>ACME HOMES</code> from <code>messageHeader()</code> <code>Thank you</code> from <code>messageFooter()</code> and the sender <code>ACME</code> from <code>messageSenderId()</code>.</p>
         <x-docs::code lang="json" title="First payload item">
             {

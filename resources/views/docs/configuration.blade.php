@@ -6,11 +6,13 @@
 @section('content')
     <x-docs::section id="keys" title="Keys">
         <x-docs::table :columns="['Key', 'Environment', 'What it does']" :rows="[
+            ['event', '', 'The event send() and sendTo() dispatch, and the one the package listens to. Defaults to Nyumbani\\Messaging\\Events\\MessageProcessed. A custom class must extend it, otherwise the provider throws an InvalidArgumentException.'],
+            ['chunk_size', '', 'The most recipients sendTo() puts in one event. Defaults to 500, the size of an SMS request.'],
             ['rate_limit_per_second', '', 'The most queued requests (not messages: one request holds up to 500) that go out each second, counted in your cache store across all workers. Defaults to 4.'],
             ['connect.base_url', 'NYUMBANI_CONNECT_BASE_URL', 'The address of Nyumbani Connect.'],
             ['connect.access_token', 'NYUMBANI_CONNECT_TOKEN', 'The bearer token Connect checks.'],
             ['connect.sms.enabled', 'MESSAGING_SMS_ENABLED', 'Switches every SMS off when false. Defaults to true.'],
-            ['connect.sms.sender_id', 'MESSAGING_SMS_SENDER_ID', 'The sender used when a message has none. Defaults to NYUMBANI.'],
+            ['connect.sms.sender_id', 'MESSAGING_SMS_SENDER_ID', 'The sender used when a message has none. Defaults to NYUMBANI. An SMS with no sender anywhere makes toSMS() throw a LogicException.'],
             ['connect.sms.uri', '', 'The Connect path SMS are posted to.'],
             ['email.enabled', 'MESSAGING_EMAIL_ENABLED', 'Switches email on. Defaults to false, so no email is sent until you turn it on.'],
             ['email.from.address, email.from.name', 'MESSAGING_EMAIL_FROM_ADDRESS, MESSAGING_EMAIL_FROM_NAME', 'The sender used when a message has none. The name falls back to the app name. A message with no sender anywhere throws a LogicException.'],
