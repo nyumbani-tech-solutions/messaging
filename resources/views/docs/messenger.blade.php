@@ -10,7 +10,7 @@
             ['Messenger::for($scope)', 'Makes the messenger for a scope. The scope is required and must be a model that implements MessageScope, or a TypeError is thrown.'],
             ['Messenger::global()', 'Makes the messenger for no scope: only the global switches apply, and its messages have no scope.'],
             ['recipient(Model $recipient)', 'Starts a Message for the recipient, scoped to the messenger and framed by the scope\'s messageHeader(), messageFooter() and messageSenderId(). The scope is asked once per messenger, not once per recipient.'],
-            ['isEnabled(MessageChannel $channel), smsEnabled()', 'True when the channel is on globally and for the scope.'],
+            ['isEnabled(MessageChannel $channel), smsEnabled(), emailEnabled()', 'True when the channel is on globally (messaging.connect.sms.enabled for SMS, messaging.email.enabled for email) and for the scope.'],
             ['canSend()', 'True when at least one channel is on.'],
         ]" />
     </x-docs::section>

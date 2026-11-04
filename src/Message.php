@@ -49,6 +49,40 @@ class Message
     protected array $metaData = [];
 
     /**
+     * The body of the email when it should differ from the SMS body, or null to use the body
+     */
+    protected ?string $emailBody = null;
+
+    /**
+     * The address and name the email is sent from, or null for the configured sender
+     *
+     * @var array{address: string, name: ?string}|null
+     */
+    protected ?array $from = null;
+
+    /**
+     * The address and name replies go to, or null for the configured reply-to
+     *
+     * @var array{address: string, name: ?string}|null
+     */
+    protected ?array $replyTo = null;
+
+    /**
+     * The logo shown in the email, or null for the configured one
+     */
+    protected ?string $logo = null;
+
+    /**
+     * The organization name shown in the email, or null for the configured one
+     */
+    protected ?string $organizationName = null;
+
+    /**
+     * The options the email driver reads, such as the template_key of the ZeptoMail template
+     */
+    protected array $emailOptions = [];
+
+    /**
      * Return a new message
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
@@ -59,7 +93,7 @@ class Message
     }
 
     /**
-     * Set the model the message is sent to, who must have a phone_number
+     * Set the model the message is sent to, who must have a phone_number for SMS and an email for email
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -156,6 +190,118 @@ class Message
     {
         //  Merge the meta data
         $this->metaData = [...$this->metaData, ...$metaData];
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the address and name the email is sent from
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function from(string $address, ?string $name = null): static
+    {
+        //  Set the sender
+        $this->from = ['address' => $address, 'name' => $name];
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the address and name replies to the email go to
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function replyTo(string $address, ?string $name = null): static
+    {
+        //  Set the reply-to
+        $this->replyTo = ['address' => $address, 'name' => $name];
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the logo shown in the email
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function logo(?string $logo): static
+    {
+        //  Set the logo
+        $this->logo = $logo;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the organization name shown in the email
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function organization(?string $name): static
+    {
+        //  Set the organization name
+        $this->organizationName = $name;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the options the email driver reads, such as the template_key of the ZeptoMail template
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function emailOptions(array $options): static
+    {
+        //  Merge the options
+        $this->emailOptions = [...$this->emailOptions, ...$options];
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set a body for the email alone, or null to send the body of the SMS
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function emailBody(?string $body): static
+    {
+        //  Set the email body
+        $this->emailBody = $body;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Build the email body with a handler method, leaving the SMS body alone. A handler without an email() method keeps the shared body
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function emailHandler(MessageHandler $handler, string $method = 'email'): static
+    {
+        //  The default method is optional
+        if ($method === 'email' && ! method_exists($handler, 'email')) {
+            return $this;
+        }
+
+        //  Get the email
+        $email = new static;
+
+        //  Get the recipient
+        $email->recipient = $this->recipient;
+
+        //  Get the scope
+        $email->scope = $this->scope;
+
+        //  Set the email body
+        $this->emailBody = $handler->build($email, $method)->getBody();
 
         //  Return the message
         return $this;
@@ -303,6 +449,38 @@ class Message
             'sender_id' => $senderId ?? $this->senderId,
             'number' => $recipient->phone_number,
             'text' => "{$header}{$this->salutation}{$this->body}{$footer}",
+            'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
+        ];
+    }
+
+    /**
+     * Get the email payload item for the recipient, who must have an email and a name
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function toEmail(string $subject): array
+    {
+        //  Get the recipient
+        $recipient = $this->requireRecipient('toEmail()');
+
+        //  Return the payload item
+        return [
+            'scope_type' => $this->scope?->getMorphClass(),
+            'scope_id' => $this->scope?->getKey(),
+            'client_id' => $recipient->getKey(),
+            'client_type' => $recipient->getMorphClass(),
+            'address' => $recipient->email,
+            'name' => (string) $recipient->name,
+            'subject' => $subject,
+            'from' => $this->from,
+            'reply_to' => $this->replyTo,
+            'logo' => $this->logo,
+            'organization_name' => $this->organizationName,
+            'header' => $this->header ? trim($this->header) : null,
+            'salutation' => $this->salutation ? trim($this->salutation) : null,
+            'body' => $this->emailBody ?? $this->body,
+            'footer' => $this->footer ? trim($this->footer) : null,
+            'options' => $this->emailOptions,
             'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
         ];
     }

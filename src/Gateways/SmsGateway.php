@@ -2,41 +2,19 @@
 
 namespace Nyumbani\Messaging\Gateways;
 
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
-use InvalidArgumentException;
+use Nyumbani\Messaging\Drivers\ConnectSmsDriver;
+use Nyumbani\Messaging\Drivers\SmsDriver;
 
 class SmsGateway extends Gateway
 {
     /**
-     * Group the messages by sender, then split each group into batches
+     * Get the driver that delivers SMS, which is Nyumbani Connect and cannot be replaced by an app
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    protected function batches(Collection $messages): Collection
+    protected function driver(): SmsDriver
     {
-        return $messages
-            ->groupBy('sender_id')
-            ->flatMap(fn (Collection $group) => $group->chunk($this->chunkSize));
-    }
-
-    /**
-     * Send one list of messages to Nyumbani Connect, throwing when it fails
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    public function deliver(array $payload): void
-    {
-        //  Connect only accepts a list of messages, even for a single message
-        if ($payload === [] || ! array_is_list($payload)) {
-            throw new InvalidArgumentException('The payload sent to Connect must be a list of messages.');
-        }
-
-        //  Get the uri
-        $uri = config('messaging.connect.sms.uri');
-
-        //  Send the request
-        Http::connect()->post($uri, $payload)->throw();
+        return new ConnectSmsDriver;
     }
 
     /**
@@ -63,24 +41,5 @@ class SmsGateway extends Gateway
             'number' => '254'.substr($digits, -9),
             'sender_id' => $senderId,
         ]);
-    }
-
-    /**
-     * Build the request body for one chunk of normalised messages
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    protected function format(array $messages): array
-    {
-        return collect($messages)->map(fn (array $message) => [
-            'scope_type' => $message['scope_type'] ?? null,
-            'scope_id' => $message['scope_id'] ?? null,
-            'client_id' => $message['client_id'] ?? null,
-            'client_type' => $message['client_type'] ?? null,
-            'recipient' => $message['number'],
-            'message' => $message['text'],
-            'sender_id' => $message['sender_id'],
-            'meta_data' => $message['meta_data'] ?? null,
-        ])->all();
     }
 }

@@ -89,6 +89,47 @@
         </x-docs::code>
     </x-docs::section>
 
+    <x-docs::section id="email-tests" title="Testing an email">
+        <p>The same three levels apply. Read <code>toEmail('Subject')['body']</code> for the wording, fake the queue for the batch, and run the job by hand for the ZeptoMail request.</p>
+        <x-docs::code title="tests/Feature/InvoiceEmailTest.php">
+            use Illuminate\Support\Facades\Http;
+            use Illuminate\Support\Facades\Queue;
+            use Nyumbani\Messaging\Events\MessageProcessed;
+            use Nyumbani\Messaging\Gateways\EmailGateway;
+            use Nyumbani\Messaging\Jobs\SendMessageJob;
+            use Nyumbani\Messaging\Message;
+
+            beforeEach(function () {
+                config([
+                    'messaging.email.enabled' => true,
+                    'messaging.email.from' => ['address' => 'noreply@acme.test', 'name' => 'Acme'],
+                    'messaging.email.zeptomail.uri' => 'https://zepto.test/send',
+                    'messaging.email.zeptomail.api_token' => 'abc123',
+                    'messaging.email.zeptomail.template_key' => 'tpl-default',
+                ]);
+            });
+
+            it('queues the email', function () {
+                Queue::fake();
+
+                $email = Message::make()->recipient($user)->salutation()->text('Hi.')->toEmail('Hello');
+
+                MessageProcessed::dispatch(['email' => [$email]], ['invoice']);
+
+                Queue::assertPushed(SendMessageJob::class, fn (SendMessageJob $job) => $job->payload['template_key'] === 'tpl-default'
+                    && $job->payload['to'][0]['email_address']['address'] === $user->email);
+            });
+
+            it('posts the template batch to zeptomail', function () {
+                Http::fake(['zepto.test/*' => Http::response([], 201)]);
+
+                (new SendMessageJob(EmailGateway::class, $payload))->handle();
+
+                Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Zoho-enczapikey abc123'));
+            });
+        </x-docs::code>
+    </x-docs::section>
+
     <x-docs::section id="troubleshooting" title="A message did not arrive">
         <p>Work down the list; the earlier checks are the cheaper ones.</p>
         <x-docs::table :columns="['Check', 'How', 'Fix']" :rows="[
@@ -99,9 +140,13 @@
             ['Did the job fail?', 'php artisan queue:failed, and the log for Message sending failed.', 'The error shows Connect\'s answer. A 401 is a wrong NYUMBANI_CONNECT_TOKEN; a connection error is a wrong NYUMBANI_CONNECT_BASE_URL.'],
             ['Is it only slow?', 'Many requests at once wait for the rate limit.', 'Raise messaging.rate_limit_per_second, or wait: nothing is lost.'],
             ['Wrong sender?', 'toSMS() argument, then the scope, then the config default.', 'Set messageSenderId() on the scope or pass the sender to toSMS().'],
+            ['Is email switched off?', 'config(\'messaging.email.enabled\') and the scope\'s isMessageChannelEnabled().', 'Set MESSAGING_EMAIL_ENABLED=true. Email is off by default, and a switched-off message is dropped without any error.'],
+            ['Was the email dropped for its address?', 'The address must pass a normal email check.', 'Store a valid email. An invalid one is dropped silently.'],
+            ['Did dispatching an email throw?', 'A LogicException says what is missing.', 'Set messaging.email.from.address (or call from()), and ZEPTOMAIL_TEMPLATE_KEY (or emailOptions()).'],
+            ['Did ZeptoMail refuse it?', 'php artisan queue:failed and the log for Message sending failed.', 'The error shows ZeptoMail\'s answer. A 401 is a wrong ZEPTOMAIL_API_TOKEN; a sender from an unverified domain is refused.'],
         ]" />
         <x-docs::callout type="tip" title="Read the exact request">
-            Temporarily dump <code>$job->payload</code> from a queue fake, or run the job in <code>tinker</code> with <code>Http::fake()</code>. The payload is exactly the list Connect receives.
+            Temporarily dump <code>$job->payload</code> from a queue fake, or run the job in <code>tinker</code> with <code>Http::fake()</code>. The payload is exactly the body the provider receives: the list for Connect, the template batch for ZeptoMail.
         </x-docs::callout>
     </x-docs::section>
 @endsection

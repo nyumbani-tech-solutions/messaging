@@ -73,7 +73,7 @@ class Messenger
     public function isEnabled(MessageChannel $channel): bool
     {
         //  The global switch must be on
-        if (! config("messaging.connect.{$channel->value}.enabled")) {
+        if (! config($channel->enabledConfigKey())) {
             return false;
         }
 
@@ -89,6 +89,16 @@ class Messenger
     public function smsEnabled(): bool
     {
         return $this->isEnabled(MessageChannel::SMS);
+    }
+
+    /**
+     * Determine whether email is on
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function emailEnabled(): bool
+    {
+        return $this->isEnabled(MessageChannel::EMAIL);
     }
 
     /**

@@ -1,7 +1,7 @@
 @extends('docs::layout')
 
 @section('page', 'Installation')
-@section('lead', 'Require the package, set the Connect credentials and pick how messages are sent.')
+@section('lead', 'Require the package, set the Connect and ZeptoMail credentials and pick how messages are sent.')
 
 @section('content')
     <x-docs::section id="require" title="1. Require the package">
@@ -17,8 +17,16 @@
             NYUMBANI_CONNECT_TOKEN=
             MESSAGING_SMS_SENDER_ID=NYUMBANI
         </x-docs::code>
-        <x-docs::callout type="warning" title="The token is a secret">
-            Keep it in the git-ignored <code>.env</code> only, never in code or <code>.env.example</code>.
+        <p>To send email as well, add the ZeptoMail settings. Email is off until <code>MESSAGING_EMAIL_ENABLED</code> is true.</p>
+        <x-docs::code lang="bash" title=".env">
+            MESSAGING_EMAIL_ENABLED=true
+            MESSAGING_EMAIL_FROM_ADDRESS=noreply@example.com
+            MESSAGING_EMAIL_FROM_NAME="Acme Homes"
+            ZEPTOMAIL_API_TOKEN=
+            ZEPTOMAIL_TEMPLATE_KEY=
+        </x-docs::code>
+        <x-docs::callout type="warning" title="The tokens are secrets">
+            Keep them in the git-ignored <code>.env</code> only, never in code or <code>.env.example</code>. The sender address must belong to a domain verified in your ZeptoMail mail agent.
         </x-docs::callout>
     </x-docs::section>
 
@@ -29,7 +37,7 @@
             ['database, redis, sqs...', 'The request only queues the message and finishes at once. A worker sends it, retries a failure, and spreads the load with the rate limit.', 'A queue worker, such as php artisan queue:work or Horizon.'],
         ]" />
         <x-docs::callout type="tip" title="Which to use">
-            Use <code>sync</code> to get going. Move to a real queue when a slow Connect should not slow your pages, or when you send many messages at once.
+            Use <code>sync</code> to get going. Move to a real queue when a slow provider should not slow your pages, or when you send many messages at once.
         </x-docs::callout>
     </x-docs::section>
 

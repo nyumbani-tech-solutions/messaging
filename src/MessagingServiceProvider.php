@@ -117,6 +117,7 @@ class MessagingServiceProvider extends ServiceProvider
             ['title' => 'Using Messaging', 'pages' => [
                 'sending-with-handlers' => 'Sending SMS with handlers',
                 'sending-without-handlers' => 'Sending SMS without handlers',
+                'sending-email' => 'Sending email',
                 'messenger' => 'Messenger',
                 'gateways' => 'Gateways',
                 'testing-and-troubleshooting' => 'Testing and troubleshooting',

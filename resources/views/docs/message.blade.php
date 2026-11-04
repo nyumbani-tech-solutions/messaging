@@ -5,7 +5,7 @@
 
 @section('content')
     <x-docs::section id="overview" title="Message">
-        <p><code>Nyumbani\Messaging\Message</code> builds one SMS. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
+        <p><code>Nyumbani\Messaging\Message</code> builds one SMS or email. Every setter and body method returns the same message, so calls chain; only <code>toSMS()</code>, <code>toEmail()</code> and the getters (<code>getRecipient()</code>, <code>getBody()</code>) return something else. A message is made with <code>Message::make()</code>, never with <code>new</code>, and one message is built for one recipient.</p>
         <p>The text of the SMS is put together in this order, with a blank line between the header and the rest, and between the body and the footer:</p>
         <x-docs::code lang="text" title="Layout of the text">
             {header}
@@ -109,6 +109,31 @@
         <p>Put the item in a <code>MessageProcessed</code> payload under <code>sms</code> to send it. The message is not queued by <code>toSMS()</code> itself.</p>
     </x-docs::section>
 
+    <x-docs::section id="email" title="Email">
+        <p>The header, salutation, body and footer are shared with the SMS. These methods only matter to an email. The recipient needs an <code>email</code> and a <code>name</code>.</p>
+        <x-docs::table :columns="['Method', 'What it does']" :rows="[
+            ['from(string $address, ?string $name = null)', 'Sets the sender of this email. Without it, messaging.email.from is used.'],
+            ['replyTo(string $address, ?string $name = null)', 'Sets where replies go. Without it, messaging.email.reply_to is used, then the sender.'],
+            ['logo(?string $logo)', 'Sets the logo URL the template shows. Without it, messaging.email.logo is used.'],
+            ['organization(?string $name)', 'Sets the organization name the template shows. Without it, messaging.email.organization_name, then the app name.'],
+            ['emailOptions(array $options)', 'Sets options the email driver reads. ZeptoMail reads template_key to use another template than the configured one. Calls merge.'],
+            ['emailBody(?string $body)', 'Sets a body for the email alone. Null sends the shared body again.'],
+            ['emailHandler(MessageHandler $handler, string $method = \'email\')', 'Builds the email-only body with the handler\'s email() method, or the protected method named, and leaves the SMS body alone. A handler with no email() method keeps the shared body.'],
+            ['toEmail(string $subject)', 'Returns the email payload item for the recipient. Throws a LogicException when no recipient was set.'],
+        ]" />
+        <x-docs::table :columns="['Key', 'Value']" :rows="[
+            ['scope_type, scope_id, client_type, client_id', 'As for an SMS.'],
+            ['address, name', 'The recipient\'s email and name.'],
+            ['subject', 'The argument of toEmail().'],
+            ['from, reply_to, logo, organization_name', 'What the message set, or null so the gateway fills the configured value.'],
+            ['header, salutation, footer', 'Trimmed, and null when not set. The salutation is Dear {name},.'],
+            ['body', 'The email body, else the shared body. The driver turns it into the lines the template shows.'],
+            ['options', 'What emailOptions() set.'],
+            ['meta_data', 'app_url plus anything added with metaData().'],
+        ]" />
+        <p>Put the item in a <code>MessageProcessed</code> payload under <code>email</code> to send it. See <a href="{{ $docs->url('sending-email') }}" class="text-primary underline">Sending email</a>.</p>
+    </x-docs::section>
+
     <x-docs::section id="handler-class" title="MessageHandler">
         <p><code>Nyumbani\Messaging\MessageHandler</code> is the base class of every handler.</p>
         <x-docs::table :columns="['Member', 'What it does']" :rows="[
@@ -122,9 +147,9 @@
     <x-docs::section id="other" title="The other classes">
         <x-docs::table :columns="['Class', 'What it does']" :rows="[
             ['MessageProcessed', 'The event. new MessageProcessed($payload, $tags) or MessageProcessed::dispatch($payload, $tags); the payload is keyed by channel and the tags are added to the queued jobs.'],
-            ['SendMessageNotifications', 'The listener. Sends the sms messages to SmsGateway unless SMS is switched off.'],
-            ['SendMessageJob', 'Posts one request to Connect. Rate limited, and fails for good after 3 failed requests (waiting about 60, then 90 seconds), logging Message sending failed.'],
-            ['Gateways\\Gateway, Gateways\\SmsGateway', 'See Gateways.'],
+            ['SendMessageNotifications', 'The listener. Sends each channel\'s messages to its gateway unless the channel is switched off, globally or for the scope.'],
+            ['SendMessageJob', 'Sends one request through the gateway\'s driver. Rate limited, and fails for good after 3 failed requests (waiting about 60, then 90 seconds), logging Message sending failed.'],
+            ['Gateways\\Gateway, Gateways\\SmsGateway, Gateways\\EmailGateway', 'See Gateways.'],
         ]" />
     </x-docs::section>
 @endsection

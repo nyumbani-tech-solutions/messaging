@@ -3,15 +3,11 @@
 namespace Nyumbani\Messaging\Gateways;
 
 use Illuminate\Support\Collection;
+use Nyumbani\Messaging\Drivers\Driver;
 use Nyumbani\Messaging\Jobs\SendMessageJob;
 
 abstract class Gateway
 {
-    /**
-     * The number of messages sent in one request
-     */
-    protected int $chunkSize = 500;
-
     /**
      * Queue the messages, one job per request
      *
@@ -33,14 +29,11 @@ abstract class Gateway
     }
 
     /**
-     * Split the clean messages into the batches that each become one request
+     * Get the driver that delivers the channel, which the package fixes
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    protected function batches(Collection $messages): Collection
-    {
-        return $messages->chunk($this->chunkSize);
-    }
+    abstract protected function driver(): Driver;
 
     /**
      * Clean a message, or return null when it cannot be delivered
@@ -50,16 +43,32 @@ abstract class Gateway
     abstract protected function normalise(array $message): ?array;
 
     /**
+     * Split the clean messages into the batches that each become one request
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function batches(Collection $messages): Collection
+    {
+        return $this->driver()->batches($messages);
+    }
+
+    /**
      * Build the request body for one batch of clean messages
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    abstract protected function format(array $messages): array;
+    protected function format(array $messages): array
+    {
+        return $this->driver()->format($messages);
+    }
 
     /**
      * Send one request body to the provider, throwing when it fails
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    abstract public function deliver(array $payload): void;
+    public function deliver(array $payload): void
+    {
+        $this->driver()->deliver($payload);
+    }
 }

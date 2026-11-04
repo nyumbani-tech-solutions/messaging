@@ -1,18 +1,18 @@
 @extends('docs::layout')
 
 @section('page', 'Introduction')
-@section('lead', 'Build an SMS once and let the package queue it through Nyumbani Connect.')
+@section('lead', 'Build an SMS or an email once and let the package queue it and deliver it through its fixed provider.')
 
 @section('content')
     <x-docs::section id="what-it-is" title="What Messaging is">
-        <p>Every message goes out through Nyumbani Connect. You build the text with <code>Message</code>, put it in a <code>MessageProcessed</code> event, and the package queues it, limits the speed and retries it when Connect fails. Only SMS is available for now. Your app never talks to an SMS provider.</p>
+        <p>Every message goes out through a provider the package chooses for you: SMS through Nyumbani Connect and email through ZeptoMail. You build the text with <code>Message</code>, put it in a <code>MessageProcessed</code> event, and the package queues it, limits the speed and retries it when the provider fails. Your app never talks to a provider, and it cannot swap one for another: the driver of each channel is fixed inside the package.</p>
         <x-docs::table :columns="['Piece', 'What it does']" :rows="[
             ['Messenger', 'One per project or organisation: the channel switches, the header and footer the scope supplies, and the messages it starts.'],
             ['Message', 'The builder: recipient, header, salutation, body and footer, and the payload item.'],
             ['MessageHandler', 'One class per message type, which writes the body.'],
             ['MessageProcessed', 'The event that carries the payload, keyed by channel such as sms.'],
-            ['SmsGateway', 'Cleans the numbers, groups the messages by sender and queues the requests.'],
-            ['SendMessageJob', 'Posts one request to Connect, rate limited and retried.'],
+            ['SmsGateway, EmailGateway', 'Clean the messages of a channel, group them and queue the requests, handing the provider work to the channel\'s fixed driver.'],
+            ['SendMessageJob', 'Sends one request through the gateway\'s driver, rate limited and retried.'],
         ]" />
     </x-docs::section>
 
@@ -20,8 +20,8 @@
         <x-docs::steps :steps="[
             ['title' => 'Build', 'actor' => 'Your code', 'detail' => 'Message::make() collects the recipient, the wording and the optional header, footer and sender. toSMS() turns it into one payload item.', 'code' => 'Message::make()->recipient($user)->handler(...)->toSMS();'],
             ['title' => 'Dispatch', 'actor' => 'Your code', 'detail' => 'Put the items in a MessageProcessed event, keyed by channel. The second argument holds queue tags you can search for in Horizon.', 'code' => 'MessageProcessed::dispatch([\'sms\' => [$sms]], [\'otp\']);'],
-            ['title' => 'Queue', 'actor' => 'The package, in your request', 'detail' => 'The listener drops messages whose channel is switched off, SmsGateway cleans the numbers, groups by sender and queues one SendMessageJob per batch of up to 500.'],
-            ['title' => 'Deliver', 'actor' => 'The queue: at once on sync, otherwise a worker', 'detail' => 'The job posts the list to Nyumbani Connect. On the sync queue that happens during your request and a failure is thrown to your code. On a real queue a worker does it in the background, limits the speed, and retries a failure up to three times before parking it in the failed jobs table.'],
+            ['title' => 'Queue', 'actor' => 'The package, in your request', 'detail' => 'The listener drops messages whose channel is switched off, The channel\'s gateway cleans the messages, groups them and queues one SendMessageJob per batch: up to 500 SMS or 50 emails.'],
+            ['title' => 'Deliver', 'actor' => 'The queue: at once on sync, otherwise a worker', 'detail' => 'The job sends the batch to the provider: Nyumbani Connect for SMS, ZeptoMail for email. On the sync queue that happens during your request and a failure is thrown to your code. On a real queue a worker does it in the background, limits the speed, and retries a failure up to three times before parking it in the failed jobs table.'],
         ]" />
         <p>Steps 1 and 2 are all you write. On a real queue a dispatch costs a few milliseconds, because the slow part, the HTTP call to Connect, waits for a worker in step 4. On the <code>sync</code> queue step 4 happens straight away, so the SMS is on its way as soon as the dispatch returns.</p>
     </x-docs::section>
@@ -71,8 +71,9 @@
             <x-docs::card title="4. Sending SMS with handlers" href="{{ $docs->url('sending-with-handlers') }}">Write a handler, its variants and tests, then dispatch the message.</x-docs::card>
             <x-docs::card title="5. Sending SMS without handlers" href="{{ $docs->url('sending-without-handlers') }}">Write the text inline on the message.</x-docs::card>
             <x-docs::card title="6. Messenger" href="{{ $docs->url('messenger') }}">One object per project: its switches, header and footer, and every message.</x-docs::card>
-            <x-docs::card title="7. Gateways" href="{{ $docs->url('gateways') }}">How requests are batched, and how to add a channel.</x-docs::card>
-            <x-docs::card title="8. Testing and troubleshooting" href="{{ $docs->url('testing-and-troubleshooting') }}">Test a message, and find out why one did not arrive.</x-docs::card>
+            <x-docs::card title="7. Sending email" href="{{ $docs->url('sending-email') }}">Brand an email, pick its template and send it through ZeptoMail.</x-docs::card>
+            <x-docs::card title="8. Gateways" href="{{ $docs->url('gateways') }}">How requests are batched, the fixed drivers, and how to add a channel.</x-docs::card>
+            <x-docs::card title="9. Testing and troubleshooting" href="{{ $docs->url('testing-and-troubleshooting') }}">Test a message, and find out why one did not arrive.</x-docs::card>
             <x-docs::card title="Message reference" href="{{ $docs->url('message') }}">Every method of Message and the handler base class.</x-docs::card>
         </div>
     </x-docs::section>

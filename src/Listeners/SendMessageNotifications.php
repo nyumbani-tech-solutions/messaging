@@ -8,6 +8,8 @@ use Illuminate\Support\Collection;
 use Nyumbani\Messaging\Contracts\MessageScope;
 use Nyumbani\Messaging\Enums\MessageChannel;
 use Nyumbani\Messaging\Events\MessageProcessed;
+use Nyumbani\Messaging\Gateways\EmailGateway;
+use Nyumbani\Messaging\Gateways\Gateway;
 use Nyumbani\Messaging\Gateways\SmsGateway;
 use Nyumbani\Messaging\Messenger;
 
@@ -18,7 +20,10 @@ class SendMessageNotifications
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
-    public function __construct(protected SmsGateway $smsGateway) {}
+    public function __construct(
+        protected SmsGateway $smsGateway,
+        protected EmailGateway $emailGateway,
+    ) {}
 
     /**
      * Send the processed messages through their gateways
@@ -27,13 +32,32 @@ class SendMessageNotifications
      */
     public function handle(MessageProcessed $event): void
     {
-        //  Keep the SMS messages whose channel is on
-        $sms = $this->deliverable(MessageChannel::SMS, $event->payload['sms'] ?? []);
+        //  Send each channel's messages through its gateway
+        foreach (MessageChannel::cases() as $channel) {
+            //  Get the payload
+            $payload = $event->payload[$channel->value] ?? [];
 
-        //  Send them
-        if (count($sms) > 0) {
-            $this->smsGateway->send($sms, $event->tags);
+            //  Keep the messages whose channel is on
+            $messages = $this->deliverable($channel, $payload);
+
+            //  Send them
+            if (count($messages) > 0) {
+                $this->gateway($channel)->send($messages, $event->tags);
+            }
         }
+    }
+
+    /**
+     * Get the gateway that delivers a channel
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function gateway(MessageChannel $channel): Gateway
+    {
+        return match ($channel) {
+            MessageChannel::SMS => $this->smsGateway,
+            MessageChannel::EMAIL => $this->emailGateway,
+        };
     }
 
     /**
@@ -88,7 +112,11 @@ class SendMessageNotifications
                 }
 
                 //  Load the scopes in one query
-                return $class::query()->whereKey($group->pluck('scope_id')->unique()->all())->get()->keyBy->getKey();
+                return $class::query()
+                    ->whereKey($group->pluck('scope_id')->unique()->all())
+                    ->get()
+                    ->keyBy
+                    ->getKey();
             });
     }
 }
