@@ -47,6 +47,11 @@ class Message
     protected (Model&MessageScope)|null $scope = null;
 
     /**
+     * The category Nyumbani Connect files the SMS under, such as invoice or payment-receipt
+     */
+    protected ?string $category = null;
+
+    /**
      * The meta data sent along with the message
      */
     protected array $metaData = [];
@@ -180,6 +185,25 @@ class Message
     {
         //  Set the scope
         $this->scope = $scope;
+
+        //  Return the message
+        return $this;
+    }
+
+    /**
+     * Set the category Nyumbani Connect files the SMS under, up to 100 characters, or null for none
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    public function category(?string $category): static
+    {
+        //  Connect rejects the whole request when a category is longer than this
+        if ($category !== null && mb_strlen($category) > 100) {
+            throw new LogicException('A category can be at most 100 characters.');
+        }
+
+        //  Set the category
+        $this->category = filled($category) ? $category : null;
 
         //  Return the message
         return $this;
@@ -509,6 +533,7 @@ class Message
             'scope_id' => $this->scope?->getKey(),
             'client_id' => $recipient->getKey(),
             'client_type' => $recipient->getMorphClass(),
+            'category' => $this->category,
             'sender_id' => $senderId,
             'number' => $recipient->phone_number,
             'text' => $text,

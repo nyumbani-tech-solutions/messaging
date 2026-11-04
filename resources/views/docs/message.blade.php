@@ -17,6 +17,43 @@
         <p>A part that was not set is left out together with its blank line.</p>
     </x-docs::section>
 
+    <x-docs::section id="all-methods" title="All methods">
+        <p>Every public method of <code>Message</code>, grouped by what it is for. <strong>Works with</strong> says which channel the method matters to: <em>Both</em> for the shared parts of a message, <em>SMS</em> or <em>Email</em> for a method the other channel ignores. The setters and body methods return the same message, so calls chain; the last group returns something else, and <code>send()</code> and <code>sendTo()</code> return the message after dispatching.</p>
+        <x-docs::table :columns="['Method', 'Works with', 'Group', 'Returns', 'What it does']" :rows="[
+            ['make()', 'Both', 'Create', 'static', 'Returns a new message. The message() helper does the same. Never use new.'],
+            ['recipient(Model $recipient)', 'Both', 'Who it is for', 'message', 'The model the message is sent to: a phone_number for SMS, an email and a name for email.'],
+            ['scope((Model&MessageScope)|null $scope)', 'Both', 'Who it is for', 'message', 'The model that owns the message, which controls its channels for SMS and email. Sent to Connect as scope_type and scope_id, and not sent to ZeptoMail.'],
+            ['header(?string $header)', 'Both', 'Frame', 'message', 'The line above the salutation. Null removes it.'],
+            ['salutation(bool $include = true)', 'Both', 'Frame', 'message', 'Opens the body with Dear {recipient name},. Not calling it leaves it out, and salutation(false) removes it.'],
+            ['footer(?string $footer)', 'Both', 'Frame', 'message', 'The line below the body. Null removes it.'],
+            ['text(string $text = \'\')', 'Both', 'Body', 'message', 'Appends text, collapsing repeated spaces but keeping new lines.'],
+            ['newLine(int $count = 1)', 'Both', 'Body', 'message', 'Appends new lines.'],
+            ['action(string $link, string $action)', 'Both', 'Body', 'message', 'Appends a label and its link, such as Pay now: https://...'],
+            ['prepend(string $text)', 'Both', 'Body', 'message', 'Puts text at the start of the body, after the salutation.'],
+            ['append(string $text)', 'Both', 'Body', 'message', 'Puts text at the end of the body, as is.'],
+            ['when(bool $condition, callable $then, ?callable $else = null)', 'Both', 'Body', 'message', 'Builds part of the message only when the condition holds.'],
+            ['handler(MessageHandler $handler, string $method = \'handle\')', 'Both', 'Body', 'message', 'Builds the body with a handler. The method must be on the handler and need no arguments. The email shares this body unless it has its own.'],
+            ['senderId(string $senderId)', 'SMS', 'SMS settings', 'message', 'The sender ID. Without it the scope sender or messaging.connect.sms.sender_id is used. Email ignores it.'],
+            ['category(?string $category)', 'SMS', 'SMS settings', 'message', 'The category Connect files the SMS under. Up to 100 characters, and null or empty means none. Email ignores it.'],
+            ['metaData(array $metaData)', 'SMS', 'SMS settings', 'message', 'Values Connect keeps with the SMS. Calls merge, and app_url is always added. ZeptoMail does not receive it.'],
+            ['subject(?string $subject)', 'Email', 'Email settings', 'message', 'The email subject. Setting one adds the email channel unless via() chooses the channels.'],
+            ['from(string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'The sender of the email. Defaults to messaging.email.from.'],
+            ['replyTo(string $address, ?string $name = null)', 'Email', 'Email settings', 'message', 'Where replies go. Defaults to messaging.email.reply_to, then the sender.'],
+            ['logo(?string $logo)', 'Email', 'Email settings', 'message', 'The logo the template shows. Defaults to messaging.email.logo.'],
+            ['organization(?string $name)', 'Email', 'Email settings', 'message', 'The organization name the template shows. Defaults to messaging.email.organization_name, then the app name.'],
+            ['emailOptions(array $options)', 'Email', 'Email settings', 'message', 'Options for the email driver, such as template_key to use another ZeptoMail template.'],
+            ['emailBody(?string $body)', 'Email', 'Email settings', 'message', 'A body for the email alone. Null uses the shared body.'],
+            ['emailHandler(MessageHandler $handler, string $method = \'email\')', 'Email', 'Email settings', 'message', 'Builds the email body with a handler method. A handler without an email() method keeps the shared body.'],
+            ['via(MessageChannel|string|array $channels)', 'Both', 'Channels and sending', 'message', 'Chooses the channels, such as \'email\' or [\'sms\', \'email\']. Without it SMS goes out, plus email when there is a subject.'],
+            ['send(array|string $tags = [])', 'Both', 'Channels and sending', 'message', 'Dispatches the configured event for this message on its channels and returns it. Tags are searchable in Horizon.'],
+            ['sendTo(iterable $recipients, array|string $tags = [], ?callable $each = null)', 'Both', 'Channels and sending', 'message', 'Sends a copy to each recipient on its channels, one event for every messaging.chunk_size recipients. The callback gets the copy and the recipient, and returning false skips the recipient.'],
+            ['toSMS(?string $senderId = null)', 'SMS', 'Payloads and getters', 'array', 'The SMS payload item. Throws when there is no recipient or no sender ID.'],
+            ['toEmail(?string $subject = null)', 'Email', 'Payloads and getters', 'array', 'The email payload item. Throws when there is no recipient or no subject.'],
+            ['getRecipient()', 'Both', 'Payloads and getters', '?Model', 'The recipient, which a handler may read.'],
+            ['getBody()', 'Both', 'Payloads and getters', '?string', 'The body written so far, without the header, salutation or footer.'],
+        ]" />
+    </x-docs::section>
+
     <x-docs::section id="recipient" title="Recipient">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
             ['recipient(Model $recipient)', 'Sets who the message is for: a model with a phone_number. Required before toSMS() and toEmail().'],
@@ -83,9 +120,10 @@
         <p>See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for how to write one.</p>
     </x-docs::section>
 
-    <x-docs::section id="context" title="Scope and meta data">
+    <x-docs::section id="context" title="Scope, category and meta data">
         <x-docs::table :columns="['Method', 'What it does']" :rows="[
             ['scope((Model&MessageScope)|null $scope)', 'Sets the model that owns the message, such as a project or an organisation. It must implement MessageScope, or a TypeError is thrown. Connect receives its morph class and key as scope_type and scope_id. Without it, or with null, the message has no scope.'],
+            ['category(?string $category)', 'Sets the category Nyumbani Connect files the SMS under, such as invoice or payment-receipt, so its reports group the messages. Up to 100 characters: a longer one throws a LogicException, because Connect would refuse the whole request. Null or an empty string means none. A handler usually sets it in handle(), and a sendTo() callback can override it for one recipient.'],
             ['metaData(array $metaData)', 'Adds values Connect keeps with the message. Calls merge, and a later value for the same key wins.'],
         ]" />
         <p><code>app_url</code> is always added to the meta data, taken from <code>config('app.url')</code>.</p>
@@ -101,6 +139,7 @@
         <x-docs::table :columns="['Key', 'Value']" :rows="[
             ['scope_type, scope_id', 'The morph class and key of the scope set with scope(), or null when none was set.'],
             ['client_type, client_id', 'The morph class and key of the recipient.'],
+            ['category', 'The category set with category(), or null when none was set.'],
             ['sender_id', 'The sender from the argument, senderId() or messaging.connect.sms.sender_id. toSMS() throws a LogicException when none of them is set.'],
             ['number', 'The recipient\'s phone_number, as stored. The gateway turns it into 254 and the last nine digits.'],
             ['text', 'The full text: header, salutation, body and footer.'],

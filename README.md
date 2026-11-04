@@ -78,6 +78,10 @@ A message with a `subject()` goes out by SMS and email. `via(['sms', 'email'])` 
 
 The recipient is a model with an `email` and a `name`. Branding is set on each message (`from()`, `replyTo()`, `logo()`, `organization()`), and whatever it leaves out comes from `messaging.email`. `emailOptions(['template_key' => '...'])` uses another ZeptoMail template than the configured one. The body is shared with the SMS unless you give the email its own with `emailBody()` or a handler's `email()` method and `emailHandler()`. Emails are grouped by sender and template and sent 50 to a request. See the Sending email docs page.
 
+## Categories
+
+`category('payment-receipt')` sets the label Nyumbani Connect files the SMS under, so its reports group messages by type. Set it in a handler's `handle()` so every use of the message shares it. It can be at most 100 characters (a longer one throws a `LogicException`), it is sent exactly as given, and email ignores it.
+
 ## Many recipients
 
 `sendTo()` sends a copy of one message to each recipient, with one event for every 500 of them (`messaging.chunk_size`), so the gateways batch the requests. It accepts any iterable, including `cursor()` and `lazy()`.

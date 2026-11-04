@@ -37,6 +37,7 @@ final class ConnectSmsDriver implements SmsDriver
             'scope_id' => $message['scope_id'] ?? null,
             'client_id' => $message['client_id'] ?? null,
             'client_type' => $message['client_type'] ?? null,
+            'category' => $message['category'] ?? null,
             'recipient' => $message['number'],
             'message' => $message['text'],
             'sender_id' => $message['sender_id'],

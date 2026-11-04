@@ -46,11 +46,12 @@
 
                     $this->message
                         ->text("Invoice {$this->invoice->number} is due on {$due}.")->newLine(2)
-                        ->action($this->payLink, 'Pay now:');
+                        ->action($this->payLink, 'Pay now:')
+                        ->category('invoice');
                 }
             }
         </x-docs::code>
-        <p>See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for the rules.</p>
+        <p><code>category()</code> is the label Nyumbani Connect files the SMS under, so every invoice message is reported together. See <a href="{{ $docs->url('sending-with-handlers') }}" class="text-primary underline">Sending SMS with handlers</a> for the rules.</p>
     </x-docs::section>
 
     <x-docs::section id="send" title="4. Send one message to every recipient">
@@ -95,6 +96,7 @@
                 "scope_id": 5,
                 "client_id": 12,
                 "client_type": "tenant",
+                "category": "invoice",
                 "sender_id": "ACME",
                 "number": "0712 345 678",
                 "text": "ACME HOMES\n\nDear Jane Wanjiru, Invoice INV-1042 is due on 5 November 2026.\n\nPay now: https://acme.test/invoices/42/pay\n\nThank you",
@@ -118,6 +120,7 @@
                     "scope_id": 5,
                     "client_id": 12,
                     "client_type": "tenant",
+                    "category": "invoice",
                     "recipient": "254712345678",
                     "message": "ACME HOMES\n\nDear Jane Wanjiru, Invoice INV-1042 is due on 5 November 2026.\n\nPay now: https://acme.test/invoices/42/pay\n\nThank you",
                     "sender_id": "ACME",
@@ -130,6 +133,7 @@
                     "scope_id": 5,
                     "client_id": 13,
                     "client_type": "tenant",
+                    "category": "invoice",
                     "recipient": "254722000111",
                     "message": "ACME HOMES\n\nDear Peter Otieno, Invoice INV-1042 is due on 5 November 2026.\n\nPay now: https://acme.test/invoices/42/pay\n\nThank you",
                     "sender_id": "ACME",

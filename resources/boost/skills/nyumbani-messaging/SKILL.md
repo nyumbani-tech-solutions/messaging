@@ -33,6 +33,51 @@ message()->salutation()->sendTo($tenants, 'rent', fn (Message $message, Tenant $
 
 `salutation()` opens each copy with that recipient's name. The callback gets the copy and its recipient, runs after the shared content (so what it adds goes at the end of the body), and returns `false` to skip the recipient. Tags are for the whole dispatch, so they are given to `sendTo()`. Eager load whatever the callback reads. `$messenger->message()` starts a framed message with no recipient for `sendTo()`. To build the items yourself, `MessageProcessed::dispatch(['sms' => $items], $tags)` still works.
 
+## All Message methods
+Every public method, grouped, with the channel it matters to: Both for the shared parts, SMS or Email for a method the other channel ignores. All of them return the message (`static`) unless the Returns column says otherwise.
+
+| Method | Works with | Returns | What it does |
+| --- | --- | --- | --- |
+| **Create** | | | |
+| `make()` | Both | `static` | Returns a new message. The message() helper does the same. Never use new. |
+| **Who it is for** | | | |
+| `recipient(Model $recipient)` | Both | message | The model the message is sent to: a phone_number for SMS, an email and a name for email. |
+| `scope((Model&MessageScope)\|null $scope)` | Both | message | The model that owns the message, which controls its channels for SMS and email. Sent to Connect as scope_type and scope_id, and not sent to ZeptoMail. |
+| **Frame** | | | |
+| `header(?string $header)` | Both | message | The line above the salutation. Null removes it. |
+| `salutation(bool $include = true)` | Both | message | Opens the body with Dear {recipient name},. Not calling it leaves it out, and salutation(false) removes it. |
+| `footer(?string $footer)` | Both | message | The line below the body. Null removes it. |
+| **Body** | | | |
+| `text(string $text = '')` | Both | message | Appends text, collapsing repeated spaces but keeping new lines. |
+| `newLine(int $count = 1)` | Both | message | Appends new lines. |
+| `action(string $link, string $action)` | Both | message | Appends a label and its link, such as Pay now: https://... |
+| `prepend(string $text)` | Both | message | Puts text at the start of the body, after the salutation. |
+| `append(string $text)` | Both | message | Puts text at the end of the body, as is. |
+| `when(bool $condition, callable $then, ?callable $else = null)` | Both | message | Builds part of the message only when the condition holds. |
+| `handler(MessageHandler $handler, string $method = 'handle')` | Both | message | Builds the body with a handler. The method must be on the handler and need no arguments. The email shares this body unless it has its own. |
+| **SMS settings** | | | |
+| `senderId(string $senderId)` | SMS | message | The sender ID. Without it the scope sender or messaging.connect.sms.sender_id is used. Email ignores it. |
+| `category(?string $category)` | SMS | message | The category Connect files the SMS under. Up to 100 characters, and null or empty means none. Email ignores it. |
+| `metaData(array $metaData)` | SMS | message | Values Connect keeps with the SMS. Calls merge, and app_url is always added. ZeptoMail does not receive it. |
+| **Email settings** | | | |
+| `subject(?string $subject)` | Email | message | The email subject. Setting one adds the email channel unless via() chooses the channels. |
+| `from(string $address, ?string $name = null)` | Email | message | The sender of the email. Defaults to messaging.email.from. |
+| `replyTo(string $address, ?string $name = null)` | Email | message | Where replies go. Defaults to messaging.email.reply_to, then the sender. |
+| `logo(?string $logo)` | Email | message | The logo the template shows. Defaults to messaging.email.logo. |
+| `organization(?string $name)` | Email | message | The organization name the template shows. Defaults to messaging.email.organization_name, then the app name. |
+| `emailOptions(array $options)` | Email | message | Options for the email driver, such as template_key to use another ZeptoMail template. |
+| `emailBody(?string $body)` | Email | message | A body for the email alone. Null uses the shared body. |
+| `emailHandler(MessageHandler $handler, string $method = 'email')` | Email | message | Builds the email body with a handler method. A handler without an email() method keeps the shared body. |
+| **Channels and sending** | | | |
+| `via(MessageChannel\|string\|array $channels)` | Both | message | Chooses the channels, such as 'email' or ['sms', 'email']. Without it SMS goes out, plus email when there is a subject. |
+| `send(array\|string $tags = [])` | Both | message | Dispatches the configured event for this message on its channels and returns it. Tags are searchable in Horizon. |
+| `sendTo(iterable $recipients, array\|string $tags = [], ?callable $each = null)` | Both | message | Sends a copy to each recipient on its channels, one event for every messaging.chunk_size recipients. The callback gets the copy and the recipient, and returning false skips the recipient. |
+| **Payloads and getters** | | | |
+| `toSMS(?string $senderId = null)` | SMS | `array` | The SMS payload item. Throws when there is no recipient or no sender ID. |
+| `toEmail(?string $subject = null)` | Email | `array` | The email payload item. Throws when there is no recipient or no subject. |
+| `getRecipient()` | Both | `?Model` | The recipient, which a handler may read. |
+| `getBody()` | Both | `?string` | The body written so far, without the header, salutation or footer. |
+
 ## Gateways and drivers
 A channel is a gateway extending the abstract `Gateway`, plus a fixed driver. The gateway implements `normalise()` (clean one message, or return null to drop it) and `driver()`; the driver implements `batches()`, `format()` and `deliver()` (throw on failure). `SmsGateway` uses `ConnectSmsDriver` and `EmailGateway` uses `ZeptoMailEmailDriver`. The drivers are `final`, created by the gateways, and neither read from config nor bound in the container.
 
@@ -62,6 +107,9 @@ message()
 - The ZeptoMail template must show `subject`, `logo`, `organization_name`, `header`, `salutation`, `footer` and `lines`.
 - Dropped silently: an invalid address, and email switched off. Thrown as a `LogicException` on dispatch: no sender anywhere, or no template key anywhere.
 
+## Categories
+`category('payment-receipt')` sets the label Nyumbani Connect files the SMS under, so its reports group messages by type. Put it in the handler's `handle()` so every use of a message type shares it; a variant method may set its own, and a `sendTo()` callback may override it per recipient. Use short kebab-case keys, reuse the ones other Nyumbani apps already use (`invoice`, `payment-receipt`, `arrears-reminder`, `new-tenant`), and keep it at 100 characters or fewer: a longer one throws a `LogicException`, because Connect would reject the whole request. The package sends exactly the string it is given, with no prefixing, and email ignores it.
+
 ## Message handlers
 A message type is a class that extends `MessageHandler` and implements `handle()`. Its inputs go in the constructor, and it fills `$this->message` with `text()`, `newLine()`, `action()`, `prepend()`, `append()` and `when()`. Keep it in the app, for example `app/Services/Messaging/Handlers`, and attach it with `Message::make()->handler(new ThingMessageHandler(...))`. To build a variant, add a protected method with no required arguments and pass its name as the second argument, `handler($handler, 'reminder')`. Any other method name throws an `InvalidArgumentException`.
 
@@ -74,7 +122,7 @@ message()->recipient($user)->salutation()->handler(new CheckInOtpMessageHandler(
 For a user named Jane and the code 1234, the text sent is `Dear Jane, Your code is 1234.` (`salutation()` includes a salutation to the recipient's name; not calling it sends none, and `salutation(false)` removes it).
 
 ## Payload attributes
-`recipient($model)` takes a model with a `phone_number`, and `toSMS($senderId = null)` returns the item: `scope_type`, `scope_id`, `client_type`, `client_id`, `sender_id`, `number`, `text` and `meta_data`. The recipient is the client, so Connect can trace the message to a record. A message has no scope (`scope_type` and `scope_id` are null) unless `scope($model)`, which must be a `MessageScope`, or a messenger sets one. Add extra meta data with `metaData([...])`; `app_url` is always sent. `toSMS()` and `toEmail()` throw a `LogicException` without a recipient.
+`recipient($model)` takes a model with a `phone_number`, and `toSMS($senderId = null)` returns the item: `scope_type`, `scope_id`, `client_type`, `client_id`, `category`, `sender_id`, `number`, `text` and `meta_data`. The recipient is the client, so Connect can trace the message to a record. A message has no scope (`scope_type` and `scope_id` are null) unless `scope($model)`, which must be a `MessageScope`, or a messenger sets one. Add extra meta data with `metaData([...])`; `app_url` is always sent. `toSMS()` and `toEmail()` throw a `LogicException` without a recipient.
 
 ## Messenger: switching a channel off per scope
 `Messenger::for($project)` holds the channel switches and takes the header, footer and sender ID from the scope's `messageHeader()`, `messageFooter()` and `messageSenderId()` (each `?string`, null for none or the default sender, worked out once per messenger). The sender sent is the `toSMS('ACME')` argument, else the scope's, else the config default. The scope is required and must be a model implementing `MessageScope`, otherwise a `TypeError`; `Messenger::global()` is for no scope and starts messages with the scope, header and footer set: `$messenger->recipient($admin)->salutation()->handler(...)->toSMS('ACME')`. `salutation()` with no argument uses the recipient's `name`; it is never added on its own.
