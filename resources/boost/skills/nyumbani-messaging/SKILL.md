@@ -199,7 +199,7 @@ Connect always receives a list of messages, even for one; `ConnectSmsDriver::del
 
 ## When nothing arrives
 - On the `sync` queue the SMS is sent during the request and no worker is needed (a Connect failure then throws to the caller and is not retried). On any other queue connection a worker must be running.
-- A number under nine digits is dropped silently.
+- A number that is not nine digits (optionally led by 0 or 254) is dropped silently, so the too-long fake numbers from `HasKenyans` never reach Connect.
 - `MESSAGING_SMS_ENABLED=false` skips every SMS, and `MESSAGING_EMAIL_ENABLED` (off by default) gates every email.
 - An email with an invalid address is dropped silently. ZeptoMail refuses a sender from an unverified domain or a wrong token (a 401), and the job fails like an SMS does.
 - A failing Connect request is tried again after about 60 and 90 seconds, and after the third failure the job fails and logs `Message sending failed`. Check the failed jobs table.

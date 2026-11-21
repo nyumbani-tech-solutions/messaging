@@ -9,7 +9,7 @@
         <x-docs::steps :steps="[
             ['title' => 'The event is dispatched', 'actor' => 'send(), sendTo() or your code', 'detail' => 'The event carries the payload keyed by channel, and the queue tags. send() puts one message in it and sendTo() up to messaging.chunk_size.'],
             ['title' => 'The listener filters', 'actor' => 'SendMessageNotifications, at once', 'detail' => 'For each channel it drops messages when the channel is off globally, or off for the scope the message carries. One query per scope type loads the scopes.'],
-            ['title' => 'The gateway cleans', 'actor' => 'normalise()', 'detail' => 'SMS: digits only, turned into 254 plus the last nine, the sender filled from config for items built by hand. Email: the address checked, the sender, reply-to, logo and organization filled from config. A message with an unusable number or address is dropped silently.'],
+            ['title' => 'The gateway cleans', 'actor' => 'normalise()', 'detail' => 'SMS: digits only, checked as nine digits (optionally led by 0 or 254) and turned into 254 plus those nine, the sender filled from config for items built by hand. Email: the address checked, the sender, reply-to, logo and organization filled from config. A message with an unusable number or address is dropped silently.'],
             ['title' => 'The driver batches', 'actor' => 'The driver\'s batches() and format()', 'detail' => 'SMS are grouped by sender_id and split into chunks of 500. Emails are grouped by sender, reply-to and template and split into chunks of 50. Each chunk becomes the body the provider expects.'],
             ['title' => 'A job is queued per batch', 'actor' => 'SendMessageJob::dispatch()', 'detail' => 'Everything so far ran in the request that dispatched the event. On a real queue a worker takes over from here; on the sync queue the job runs straight away.'],
             ['title' => 'The job delivers', 'actor' => 'The driver\'s deliver()', 'detail' => 'It sends the body to Connect or ZeptoMail and throws on failure, so the queue retries it.'],
@@ -43,7 +43,7 @@
     <x-docs::section id="sms" title="SmsGateway and ConnectSmsDriver">
         <p>This is what each step does to an SMS.</p>
         <x-docs::table :columns="['Step', 'What it does', 'Example']" :rows="[
-            ['normalise', 'Keeps the digits of the number and turns them into 254 plus the last nine. Drops a message with fewer than nine digits, silently. Fills a missing sender_id from messaging.connect.sms.sender_id.', '0712 345 678 becomes 254712345678'],
+            ['normalise', 'Keeps the digits of the number and turns them into 254 plus the last nine. Drops a message whose number is not nine digits, optionally led by 0 or 254, silently. Fills a missing sender_id from messaging.connect.sms.sender_id.', '0712 345 678 becomes 254712345678'],
             ['batches', 'Groups by sender_id, then chunks each group into requests of up to 500.', '600 messages from one sender: two requests, 500 and 100'],
             ['format', 'Renames fields to what Connect expects: number to recipient, text to message.', 'number: 254712345678 becomes recipient: 254712345678'],
             ['deliver', 'Posts the list to messaging.connect.sms.uri with Http::connect() and calls throw() on the answer. An empty or non-list payload is refused with an InvalidArgumentException.', 'POST {base_url}/api/sms/send'],

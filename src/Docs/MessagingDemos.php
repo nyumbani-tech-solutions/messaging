@@ -30,7 +30,7 @@ class MessagingDemos
 
         //  A message without a usable number never leaves the gateway
         if ($clean === null) {
-            return [$this->row('text', $item['text']), $this->row('Would be delivered', 'Dropped: the number has fewer than nine digits', false)];
+            return [$this->row('text', $item['text']), $this->row('Would be delivered', 'Dropped: not a valid Kenyan number (nine digits, optionally led by 0 or 254)', false)];
         }
 
         return [
@@ -61,7 +61,7 @@ class MessagingDemos
         $clean = (new ReflectionMethod($gateway, 'normalise'))->invoke($gateway, $item);
 
         if ($clean === null) {
-            return [$this->row('text', $item['text']), $this->row('Sent', 'No: the number has fewer than nine digits', false)];
+            return [$this->row('text', $item['text']), $this->row('Sent', 'No: not a valid Kenyan number (nine digits, optionally led by 0 or 254)', false)];
         }
 
         //  Through the queue, the way the package queues every message

@@ -128,7 +128,7 @@
         <x-docs::table :columns="['Check', 'How', 'Fix']" :rows="[
             ['Does your queue need a worker?', 'config(\'queue.default\'). On sync there is nothing to run: the message is sent during the request. Otherwise php artisan queue:work, or the Horizon dashboard.', 'On a real queue, start a worker. Nothing is sent until one picks the job up.'],
             ['Is SMS switched off?', 'config(\'messaging.connect.sms.enabled\') and the scope\'s isMessageChannelEnabled().', 'Set MESSAGING_SMS_ENABLED=true, or turn it on for the project. A switched-off message is dropped without any error.'],
-            ['Was the message dropped for its number?', 'The number needs at least nine digits.', 'Store the full number. A shorter one is dropped silently.'],
+            ['Was the message dropped for its number?', 'The number must be nine digits, optionally led by 0 or 254.', 'Store the full number. A shorter or longer one is dropped silently.'],
             ['Was a job queued?', 'Check the jobs table, or Horizon, for SendMessageJob.', 'No job means the message never left the listener: see the two checks above.'],
             ['Did the job fail?', 'php artisan queue:failed, and the log for Message sending failed.', 'The error shows Connect\'s answer. A 401 is a wrong NYUMBANI_CONNECT_TOKEN; a connection error is a wrong NYUMBANI_CONNECT_BASE_URL.'],
             ['Is it only slow?', 'Many requests at once wait for the rate limit.', 'Raise messaging.rate_limit_per_second, or wait: nothing is lost.'],

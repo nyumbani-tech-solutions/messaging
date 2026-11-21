@@ -94,7 +94,7 @@
             ['An email has no subject, organization name, sender or logo', 'A LogicException, even where email is switched off.'],
             ['An SMS has no sender ID anywhere', 'A LogicException.'],
             ['The channel is off, globally or for the scope', 'Left out without an error. If every channel is off, no event is dispatched.'],
-            ['A number has fewer than nine digits, or an address is not valid', 'Dropped without an error.'],
+            ['A number is not nine digits (optionally led by 0 or 254), or an address is not valid', 'Dropped without an error.'],
         ]" />
     </x-docs::section>
 @endsection

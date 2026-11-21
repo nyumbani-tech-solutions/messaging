@@ -18,7 +18,7 @@ class SmsGateway extends Gateway
     }
 
     /**
-     * Turn a message into a Kenyan number and sender, or null when it has no usable number
+     * Turn a message into a Kenyan number and sender, or null when it is not a valid Kenyan number
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
      */
@@ -27,8 +27,8 @@ class SmsGateway extends Gateway
         //  Keep digits only
         $digits = preg_replace('/\D/', '', (string) ($message['number'] ?? ''));
 
-        //  Drop messages without a full number
-        if (strlen($digits) < 9) {
+        //  Drop messages whose number is not a Kenyan one: nine digits, optionally led by 0 or 254
+        if (! preg_match('/^(?:254|0)?(\d{9})$/', $digits, $matches)) {
             return null;
         }
 
@@ -38,7 +38,7 @@ class SmsGateway extends Gateway
 
         //  Return the message with an international number and a sender
         return array_merge($message, [
-            'number' => '254'.substr($digits, -9),
+            'number' => '254'.$matches[1],
             'sender_id' => $senderId,
         ]);
     }
