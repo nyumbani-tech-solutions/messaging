@@ -24,6 +24,7 @@ final readonly class MessageIdentity
         public ?string $logo = null,
         public ?array $emailFrom = null,
         public ?array $emailReplyTo = null,
+        public array $metaData = [],
     ) {
         //  A blank name would leave the email without one, so leave it out instead
         if ($organizationName !== null && blank($organizationName)) {

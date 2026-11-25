@@ -54,10 +54,11 @@
             ['header', 'SMS and email', 'The line every message starts with, such as the project name.', 'No header.'],
             ['footer', 'SMS and email', 'The line every message ends with, such as Thank you.', 'No footer.'],
             ['senderId', 'SMS', 'The sender ID the SMS goes out as.', 'messaging.connect.sms.sender_id.'],
-            ['organizationName', 'Email', 'The name the email template shows.', 'An email throws, unless the message sets organization().'],
+            ['organizationName', 'SMS and email', 'The name the email template shows. Connect always receives it as meta data organization_name.', 'An SMS or email throws, unless the message sets organization().'],
             ['logo', 'Email', 'An absolute URL of the logo the template shows.', 'An email throws, unless the message sets logo().'],
             ['emailFrom', 'Email', 'The sender, as [\'address\' => ..., \'name\' => ...], on a domain verified in ZeptoMail.', 'An email throws, unless the message sets from().'],
             ['emailReplyTo', 'Email', 'Where replies go, in the same shape.', 'Replies go to the sender.'],
+            ['metaData', 'SMS and email', 'Values every message of this scope carries to Connect, such as [\'house_no\' => ...]. They merge with the message\'s metaData() calls, and the message wins a shared key.', 'Only app_url and the message\'s own metaData().'],
         ]" />
         <p>The identity checks itself: a blank organization name, a logo that is not an absolute URL, or an address that is not an email throws an <code>InvalidArgumentException</code> where the scope is written, not when a customer is texted.</p>
     </x-docs::section>

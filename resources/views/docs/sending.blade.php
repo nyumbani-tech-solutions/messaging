@@ -93,6 +93,7 @@
             ['The message has no recipient', 'A LogicException.'],
             ['An email has no subject, organization name, sender or logo', 'A LogicException, even where email is switched off.'],
             ['An SMS has no sender ID anywhere', 'A LogicException.'],
+            ['An SMS has no organization name, on the message or the scope', 'A LogicException.'],
             ['The channel is off, globally or for the scope', 'Left out without an error. If every channel is off, no event is dispatched.'],
             ['A number is not nine digits (optionally led by 0 or 254), or an address is not valid', 'Dropped without an error.'],
         ]" />

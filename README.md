@@ -75,7 +75,7 @@ class Project extends Model implements MessageScope
 }
 ```
 
-Every `MessageIdentity` argument is optional and named (`organizationName`, `header`, `footer`, `senderId`, `logo`, `emailFrom`, `emailReplyTo`), so a scope sets what it sends. For each value the message wins, then the scope, then the default, and the scope is read when the payload is built, so the order of calls does not matter. On any message setter `null` means *not set*; `withoutHeader()` and `withoutFooter()` send with none. An email needs an organization name, a sender and a logo, from the message or the scope, or it throws.
+Every `MessageIdentity` argument is optional and named (`organizationName`, `header`, `footer`, `senderId`, `logo`, `emailFrom`, `emailReplyTo`, `metaData`), so a scope sets what it sends. For each value the message wins, then the scope, then the default (`metaData` merges instead: `app_url`, `organization_name` (always sent, so an SMS or email needs an organization name), the scope's, then the message's `metaData()` calls), and the scope is read when the payload is built, so the order of calls does not matter. On any message setter `null` means *not set*; `withoutHeader()` and `withoutFooter()` send with none. An email needs an organization name, a sender and a logo, from the message or the scope, or it throws.
 
 ## Send an SMS
 

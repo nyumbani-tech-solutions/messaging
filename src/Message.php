@@ -553,6 +553,11 @@ class Message
             throw new LogicException('An SMS needs a sender ID: call senderId() on the message or set messaging.connect.sms.sender_id.');
         }
 
+        //  Get the organization name, which Connect always receives
+        $organizationName = $this->organizationName
+            ?? $identity->organizationName
+            ?? throw new LogicException('An SMS needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
+
         //  Return the payload item
         return [
             'scope_type' => $scope->getMorphClass(),
@@ -563,7 +568,12 @@ class Message
             'sender_id' => $senderId,
             'number' => $recipient->phone_number,
             'text' => $text,
-            'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
+            'meta_data' => [
+                'app_url' => config('app.url'),
+                'organization_name' => $organizationName,
+                ...$identity->metaData,
+                ...$this->metaData,
+            ],
         ];
     }
 
@@ -596,7 +606,9 @@ class Message
         $replyTo = $this->replyTo ?? $identity->emailReplyTo;
 
         //  Get the organization name, which every email needs
-        $organizationName = $this->organizationName ?? $identity->organizationName ?? throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
+        $organizationName = $this->organizationName
+            ?? $identity->organizationName
+            ?? throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
 
         //  Get the header
         $header = ($line = $this->header ?? $identity->header) ? trim($line) : null;
@@ -625,7 +637,12 @@ class Message
             'body' => $this->emailBody ?? $this->body,
             'footer' => $footer,
             'options' => $this->emailOptions,
-            'meta_data' => ['app_url' => config('app.url'), ...$this->metaData],
+            'meta_data' => [
+                'app_url' => config('app.url'),
+                'organization_name' => $organizationName,
+                ...$identity->metaData,
+                ...$this->metaData,
+            ],
         ];
     }
 

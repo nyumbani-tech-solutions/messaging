@@ -68,10 +68,12 @@ Every `MessageIdentity` argument is optional and named, so a scope sets what it 
 | --- | --- | --- |
 | `header`, `footer` | SMS and email | No header or footer |
 | `senderId` | SMS | `messaging.connect.sms.sender_id` |
-| `organizationName`, `logo`, `emailFrom` | Email | `toEmail()` throws, unless the message sets `organization()`, `logo()` or `from()` |
+| `organizationName` | SMS and email | `toSMS()` and `toEmail()` throw, unless the message sets `organization()`. Connect always receives it as `organization_name` |
+| `logo`, `emailFrom` | Email | `toEmail()` throws, unless the message sets `logo()` or `from()` |
 | `emailReplyTo` | Email | Replies go to the sender |
+| `metaData` | SMS and email | Only `app_url` and the message's own `metaData()`. Merges with the message's calls, and the message wins a shared key |
 
-**What wins.** For each value the message comes first (`header()`, `footer()`, `senderId()`, `organization()`, `logo()`, `from()`, `replyTo()`), then the scope's identity, then the default. The scope is read when the payload is built, so the order of calls does not matter and `scope($project)` and `Messenger::for($project)` give the same result.
+**What wins.** For each value the message comes first (`header()`, `footer()`, `senderId()`, `organization()`, `logo()`, `from()`, `replyTo()`), then the scope's identity, then the default. `meta_data` is the exception: `app_url`, then `organization_name` (always sent: the message's `organization()`, else the identity's; an SMS or email without one throws), then the identity's `metaData`, the message's `metaData()` calls merge, and the later one wins a shared key. The scope is read when the payload is built, so the order of calls does not matter and `scope($project)` and `Messenger::for($project)` give the same result.
 
 **Not set, and none.** On every message setter, `null` means *not set*, the same as never calling it: it clears what was set before and the scope's value applies again. `withoutHeader()` and `withoutFooter()` are the only way to send with none when the scope has one. The scope is required and must implement `MessageScope`, otherwise a `TypeError`.
 
