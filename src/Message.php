@@ -300,6 +300,22 @@ class Message
     }
 
     /**
+     * Prefix the organization name with the app name when the app runs locally, so Connect shows which local app sent it, such as Zaka:PCEA Milele
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function labelForEnvironment(string $organizationName): string
+    {
+        //  Leave the name alone outside the local environment
+        if (! app()->environment('local')) {
+            return $organizationName;
+        }
+
+        //  Prefix the app name
+        return config('app.name').':'.$organizationName;
+    }
+
+    /**
      * Set the subject of the email
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
@@ -554,9 +570,9 @@ class Message
         }
 
         //  Get the organization name, which Connect always receives
-        $organizationName = $this->organizationName
+        $organizationName = $this->labelForEnvironment($this->organizationName
             ?? $identity->organizationName
-            ?? throw new LogicException('An SMS needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
+            ?? throw new LogicException('An SMS needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().'));
 
         //  Return the payload item
         return [
@@ -606,9 +622,9 @@ class Message
         $replyTo = $this->replyTo ?? $identity->emailReplyTo;
 
         //  Get the organization name, which every email needs
-        $organizationName = $this->organizationName
+        $organizationName = $this->labelForEnvironment($this->organizationName
             ?? $identity->organizationName
-            ?? throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().');
+            ?? throw new LogicException('An email needs an organization name: call organization() on the message or set organizationName in the scope\'s messageIdentity().'));
 
         //  Get the header
         $header = ($line = $this->header ?? $identity->header) ? trim($line) : null;
