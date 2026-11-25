@@ -300,22 +300,6 @@ class Message
     }
 
     /**
-     * Prefix the organization name with the app name when the app runs locally, so Connect shows which local app sent it, such as Zaka:PCEA Milele
-     *
-     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
-     */
-    protected function labelForEnvironment(string $organizationName): string
-    {
-        //  Leave the name alone outside the local environment
-        if (! app()->environment('local')) {
-            return $organizationName;
-        }
-
-        //  Prefix the app name
-        return config('app.name').':'.$organizationName;
-    }
-
-    /**
      * Set the subject of the email
      *
      * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
@@ -796,5 +780,21 @@ class Message
     {
         return $this->recipient
             ?? throw new LogicException("{$method} needs a recipient: call recipient() first.");
+    }
+
+    /**
+     * Prefix the organization name with the app name when the app runs locally, so Connect shows which local app sent it, such as Zaka:PCEA Milele
+     *
+     * @author Alvin G. Kaburu <geekaburu@nyumbanitech.co.ke>
+     */
+    protected function labelForEnvironment(string $organizationName): string
+    {
+        //  Leave the name alone outside the local environment
+        if (! app()->environment('local')) {
+            return $organizationName;
+        }
+
+        //  Prefix the app name
+        return config('app.name').':'.$organizationName;
     }
 }
